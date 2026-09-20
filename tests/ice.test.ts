@@ -68,6 +68,8 @@ describe('IceProvider', () => {
     const config = await provider({}).get()
 
     expect(config.hasTurn).toBe(false)
+    expect(config.source).toBe('stun-only')
+    expect(config.reason).toBe('not_configured')
     expect(config.iceServers).toHaveLength(1)
     expect(config.iceServers[0].urls[0]).toMatch(/^stun:/)
     expect(fetcher).not.toHaveBeenCalled()
@@ -81,6 +83,7 @@ describe('IceProvider', () => {
     }).get()
 
     expect(config.hasTurn).toBe(true)
+    expect(config.source).toBe('static')
     expect(config.iceServers[1]).toEqual({
       urls: ['turn:relay.example:3478', 'turns:relay.example:5349'],
       username: 'walky',
@@ -166,7 +169,42 @@ describe('IceProvider', () => {
     // Im selben Netz funktioniert es weiterhin — und die Oberfläche kann
     // ehrlich melden, dass kein Relay da ist.
     expect(config.hasTurn).toBe(false)
+    expect(config.reason).toBe('unreachable')
     expect(config.iceServers[0].urls[0]).toMatch(/^stun:/)
+  })
+
+  // Genau die beiden Verwechslungen, die in der Einrichtung passieren.
+  it('nennt ein abgelehntes Token beim Namen', async () => {
+    fetcher.mockResolvedValue(new Response('nope', { status: 401 }))
+
+    const config = await provider({
+      CLOUDFLARE_TURN_TOKEN_ID: 'k',
+      CLOUDFLARE_TURN_API_TOKEN: 'falsch',
+    }).get()
+
+    expect(config.reason).toBe('unauthorized')
+  })
+
+  it('nennt eine unbekannte Kennung beim Namen — etwa die Konto-ID', async () => {
+    fetcher.mockResolvedValue(new Response('not found', { status: 404 }))
+
+    const config = await provider({
+      CLOUDFLARE_TURN_TOKEN_ID: 'konto-id-statt-turn-token-id',
+      CLOUDFLARE_TURN_API_TOKEN: 't',
+    }).get()
+
+    expect(config.reason).toBe('unknown_key')
+  })
+
+  it('meldet eine unbrauchbare Antwort als solche', async () => {
+    fetcher.mockResolvedValue(okResponse({ etwas: 'anderes' }))
+
+    const config = await provider({
+      CLOUDFLARE_TURN_TOKEN_ID: 'k',
+      CLOUDFLARE_TURN_API_TOKEN: 't',
+    }).get()
+
+    expect(config.reason).toBe('unexpected_response')
   })
 
   it('versucht es nach einem Ausfall erneut, statt den Fehler festzuhalten', async () => {
@@ -193,6 +231,7 @@ describe('IceProvider', () => {
     }).get()
 
     expect(config.hasTurn).toBe(true)
+    expect(config.source).toBe('static')
     expect(config.iceServers[1].urls).toEqual(['turn:ersatz.example:3478'])
   })
 

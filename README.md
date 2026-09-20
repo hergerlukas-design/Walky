@@ -208,11 +208,25 @@ nach zwölf Sekunden ohne Medienverbindung als hängend und nennt die Ursache
 Einrichtung mit Cloudflare Realtime (kostenloser Rahmen, kurzlebige
 Zugangsdaten):
 
-1. Im Cloudflare-Dashboard unter **Realtime → TURN** einen TURN-Schlüssel
-   anlegen. Er liefert eine **TURN Token ID** und ein **API Token**.
+1. Einen TURN-Schlüssel anlegen — im Dashboard unter **Realtime → TURN**,
+   oder über die API:
 
-   Nicht zu verwechseln mit R2: „Access Key ID" und „Secret Access Key"
-   gehören zum Objektspeicher und funktionieren hier nicht.
+   ```bash
+   curl -X POST \
+     "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/calls/turn_keys" \
+     -H "Authorization: Bearer <API_TOKEN>" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"walky"}'
+   ```
+
+   Aus der Antwort wird `result.uid` zur `CLOUDFLARE_TURN_TOKEN_ID` und
+   `result.key` zum `CLOUDFLARE_TURN_API_TOKEN`. Beide gibt es erst, wenn der
+   Schlüssel angelegt ist — vorher sind sie nirgends zu finden. `result.key`
+   zeigt Cloudflare nur einmal.
+
+   Zwei Verwechslungen, die hier häufig passieren: Die Konto-ID ist **nicht**
+   die Token-ID, und „Access Key ID" / „Secret Access Key" gehören zu R2,
+   dem Objektspeicher.
 
 2. Beide Werte als Secrets hinterlegen:
 
@@ -268,7 +282,10 @@ fly deploy
 `GET /healthz` liefert Status und die Zahl offener Kanäle und Teilnehmer; der
 Workflow prüft die Antwort nach jedem Deploy. `GET /api/ice` zeigt, welche
 ICE-Server die Clients bekommen — praktisch, um eine TURN-Einrichtung zu
-kontrollieren (`hasTurn` muss `true` sein).
+kontrollieren. `hasTurn` muss `true` und `source` gleich `cloudflare` bzw.
+`static` sein; andernfalls nennt `reason`, woran es liegt
+(`not_configured`, `unauthorized`, `unknown_key`, `unreachable`,
+`unexpected_response`).
 
 ## Was geprüft ist
 

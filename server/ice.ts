@@ -1,4 +1,4 @@
-import type { IceConfig, IceServerConfig } from '../shared/protocol.js'
+import type { IceConfig, IceFailureReason, IceServerConfig } from '../shared/protocol.js'
 
 const DEFAULT_STUN = ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']
 
@@ -57,6 +57,16 @@ export function parseCloudflareResponse(payload: unknown): IceServerConfig[] {
   })
 }
 
+class CloudflareError extends Error {
+  constructor(
+    readonly reason: IceFailureReason,
+    status: number,
+  ) {
+    super(`Cloudflare antwortete mit ${status}`)
+    this.name = 'CloudflareError'
+  }
+}
+
 const hasRelay = (servers: IceServerConfig[]): boolean =>
   servers.some((server) => server.urls.some((url) => url.startsWith('turn:') || url.startsWith('turns:')))
 
@@ -88,7 +98,7 @@ export class IceProvider {
     if (this.env.TURN_USERNAME) turn.username = this.env.TURN_USERNAME
     if (this.env.TURN_CREDENTIAL) turn.credential = this.env.TURN_CREDENTIAL
 
-    return { iceServers: [...this.stunServers, turn], hasTurn: true }
+    return { iceServers: [...this.stunServers, turn], hasTurn: true, source: 'static' }
   }
 
   async get(): Promise<IceConfig> {
@@ -108,6 +118,8 @@ export class IceProvider {
     const keyId = this.env.CLOUDFLARE_TURN_KEY_ID ?? this.env.CLOUDFLARE_TURN_TOKEN_ID
     const token = this.env.CLOUDFLARE_TURN_API_TOKEN
 
+    let reason: IceFailureReason = 'not_configured'
+
     if (keyId && token) {
       try {
         const servers = await this.fetchCloudflare(keyId, token)
@@ -115,6 +127,7 @@ export class IceProvider {
           const config: IceConfig = {
             iceServers: [...this.stunServers, ...servers],
             hasTurn: hasRelay(servers),
+            source: 'cloudflare',
           }
           this.cached = {
             config,
@@ -122,20 +135,24 @@ export class IceProvider {
           }
           return config
         }
+        reason = 'unexpected_response'
         console.warn('[walky] Cloudflare lieferte keine verwertbaren ICE-Server')
       } catch (error) {
-        console.warn('[walky] TURN-Zugangsdaten nicht abrufbar:', error)
+        reason = error instanceof CloudflareError ? error.reason : 'unreachable'
+        console.warn('[walky] TURN-Zugangsdaten nicht abrufbar:', reason, error)
       }
     }
 
     // Ein Ausfall des Anbieters darf nicht den ganzen Kanal lahmlegen: ohne
     // Relay funktioniert wenigstens noch dasselbe Netz. Nicht zwischenspeichern,
     // damit der nächste Versuch bald wieder erfolgt.
-    const fallback = this.staticConfig() ?? { iceServers: this.stunServers, hasTurn: false }
-    if (fallback.hasTurn) {
+    const fallback = this.staticConfig()
+    if (fallback) {
       this.cached = { config: fallback, expiresAt: Date.now() + 60 * 60 * 1000 }
+      return fallback
     }
-    return fallback
+
+    return { iceServers: this.stunServers, hasTurn: false, source: 'stun-only', reason }
   }
 
   private async fetchCloudflare(keyId: string, token: string): Promise<IceServerConfig[]> {
@@ -153,7 +170,15 @@ export class IceProvider {
     )
 
     if (!response.ok) {
-      throw new Error(`Cloudflare antwortete mit ${response.status}`)
+      // Gegen eine erfundene Kennung antwortet Cloudflare mit 401, nicht 404
+      // — "unauthorized" meint deshalb: Token oder Token-ID stimmt nicht.
+      const reason: IceFailureReason =
+        response.status === 401 || response.status === 403
+          ? 'unauthorized'
+          : response.status === 404
+            ? 'unknown_key'
+            : 'unreachable'
+      throw new CloudflareError(reason, response.status)
     }
 
     return parseCloudflareResponse(await response.json())

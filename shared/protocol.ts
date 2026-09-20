@@ -53,7 +53,32 @@ export interface IceConfig {
   iceServers: IceServerConfig[]
   /** Ohne Relay scheitert die Verbindung zwischen manchen Netzen. */
   hasTurn: boolean
+  /** Woher die Angaben stammen — macht eine Fehleinrichtung auffindbar. */
+  source: IceSource
+  /**
+   * Grob, warum kein Relay zustande kam. Bewusst ohne Einzelheiten aus der
+   * Antwort des Anbieters: Der Endpunkt ist öffentlich abrufbar.
+   */
+  reason?: IceFailureReason
 }
+
+export type IceSource = 'cloudflare' | 'static' | 'stun-only'
+
+export type IceFailureReason =
+  /**
+   * Cloudflare hat abgelehnt. Gegen eine erfundene Kennung antwortet die API
+   * ebenfalls mit 401, der Fall deckt also beides ab: falsches Token *oder*
+   * falsche Token-ID — etwa die Konto-ID statt der des TURN-Schlüssels.
+   */
+  | 'unauthorized'
+  /** Kennung ausdrücklich unbekannt. */
+  | 'unknown_key'
+  /** Anbieter nicht erreichbar oder Zeitüberschreitung. */
+  | 'unreachable'
+  /** Antwort kam an, enthielt aber keine verwertbaren Server. */
+  | 'unexpected_response'
+  /** Gar nichts konfiguriert. */
+  | 'not_configured'
 
 export const ICE_PATH = '/api/ice'
 
