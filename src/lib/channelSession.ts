@@ -4,6 +4,7 @@ import { Signaling } from './signaling'
 import { fetchIceConfig } from './env'
 import type { PeerInfo } from '../../shared/protocol'
 import type {
+  IceFailureReason,
   MicErrorCode,
   MicState,
   Participant,
@@ -70,6 +71,7 @@ export class ChannelSession {
   private signalingError: SignalingErrorCode | null = null
   private selfTalking = false
   private hasTurn = false
+  private iceReason: IceFailureReason | null = null
   private playbackBlocked = false
   private talkGuard: ReturnType<typeof setTimeout> | null = null
   private stopped = false
@@ -161,6 +163,7 @@ export class ChannelSession {
 
     this.mesh.setIceServers(ice.iceServers)
     this.hasTurn = ice.hasTurn
+    this.iceReason = ice.reason ?? null
     this.signaling.start()
   }
 
@@ -421,6 +424,7 @@ export class ChannelSession {
       selfTalking: this.selfTalking,
       participants: [self, ...others],
       hasTurn: this.hasTurn,
+      iceReason: this.iceReason,
       playbackBlocked: this.playbackBlocked,
     }
   }

@@ -27,8 +27,16 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   const [unlockToken, setUnlockToken] = useState(0)
   useWakeLock(true)
 
-  const { participants, signaling, signalingError, mic, micError, hasTurn, playbackBlocked } =
-    snapshot
+  const {
+    participants,
+    signaling,
+    signalingError,
+    mic,
+    micError,
+    hasTurn,
+    iceReason,
+    playbackBlocked,
+  } = snapshot
 
   const remotes = useMemo(
     () => participants.filter((participant) => !participant.isSelf && participant.stream),
@@ -108,9 +116,10 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
 
         {mediaStuck && (
           <StatusBanner tone="warn">
+            {t.channel.noDirectConnection}{' '}
             {hasTurn
-              ? t.channel.noDirectConnectionWithTurn
-              : t.channel.noDirectConnectionNoTurn}
+              ? t.channel.turnConfiguredButFailing
+              : t.channel.iceReasons[iceReason ?? 'not_configured']}
           </StatusBanner>
         )}
       </div>

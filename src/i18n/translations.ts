@@ -1,4 +1,9 @@
-import type { MicErrorCode, PeerStatus, SignalingErrorCode } from '../types'
+import type {
+  IceFailureReason,
+  MicErrorCode,
+  PeerStatus,
+  SignalingErrorCode,
+} from '../types'
 
 export const LANGUAGES = ['de', 'en'] as const
 export type Language = (typeof LANGUAGES)[number]
@@ -73,10 +78,18 @@ const de = {
     playbackBlocked:
       'Der Browser hat die Wiedergabe blockiert. Einmal tippen, dann ist der Ton frei.',
     playbackUnlock: 'Ton an',
-    noDirectConnectionNoTurn:
-      'Zu mindestens einem Gerät kommt keine Sprachverbindung zustande. In Mobilfunk- und Firmennetzen geht das nur über ein TURN-Relay — es ist keines eingerichtet.',
-    noDirectConnectionWithTurn:
-      'Zu mindestens einem Gerät kommt keine Sprachverbindung zustande, obwohl ein TURN-Relay eingerichtet ist. Zugangsdaten und Erreichbarkeit des Relays prüfen.',
+    noDirectConnection:
+      'Zu mindestens einem Gerät kommt keine Sprachverbindung zustande. In Mobilfunk- und Firmennetzen geht das nur über ein TURN-Relay.',
+    iceReasons: {
+      not_configured: 'Es ist keines eingerichtet.',
+      unauthorized:
+        'Eines ist hinterlegt, aber der Anbieter lehnt die Zugangsdaten ab — Token-ID oder Token stimmt nicht.',
+      unknown_key: 'Die hinterlegte Token-ID kennt der Anbieter nicht.',
+      unreachable: 'Das Relay ist gerade nicht erreichbar.',
+      unexpected_response: 'Der Anbieter hat unerwartet geantwortet.',
+    } satisfies Record<IceFailureReason, string>,
+    turnConfiguredButFailing:
+      'Ein Relay ist eingerichtet und wurde ausgeliefert — prüfe, ob es von diesem Netz aus erreichbar ist.',
   },
 
   ptt: {
@@ -200,10 +213,18 @@ const en: Translations = {
     micRetry: 'Try again',
     playbackBlocked: 'Your browser blocked playback. One tap and the sound is through.',
     playbackUnlock: 'Enable sound',
-    noDirectConnectionNoTurn:
-      'No voice connection to at least one device. On mobile and corporate networks that only works through a TURN relay — none is set up.',
-    noDirectConnectionWithTurn:
-      'No voice connection to at least one device even though a TURN relay is set up. Check the relay credentials and whether it is reachable.',
+    noDirectConnection:
+      'No voice connection to at least one device. On mobile and corporate networks that only works through a TURN relay.',
+    iceReasons: {
+      not_configured: 'None is set up.',
+      unauthorized:
+        'One is configured, but the provider rejects the credentials — the token ID or the token is wrong.',
+      unknown_key: 'The provider does not know the configured token ID.',
+      unreachable: 'The relay cannot be reached right now.',
+      unexpected_response: 'The provider returned something unexpected.',
+    },
+    turnConfiguredButFailing:
+      'A relay is set up and was handed out — check whether it is reachable from this network.',
   },
 
   ptt: {

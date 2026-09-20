@@ -1,6 +1,6 @@
-import type { PeerId } from '../shared/protocol'
+import type { IceFailureReason, PeerId } from '../shared/protocol'
 
-export type { PeerId }
+export type { IceFailureReason, PeerId }
 
 /** Zustand der Verbindung zum Signaling-Server. */
 export type SignalingStatus =
@@ -75,6 +75,8 @@ export interface SessionSnapshot {
   participants: Participant[]
   /** Ein TURN-Relay steht bereit — sonst scheitert die Verbindung zwischen manchen Netzen. */
   hasTurn: boolean
+  /** Falls keines bereitsteht: woran es liegt. */
+  iceReason: IceFailureReason | null
   /** Tonausgabe wurde vom Browser blockiert — braucht eine Nutzergeste. */
   playbackBlocked: boolean
 }

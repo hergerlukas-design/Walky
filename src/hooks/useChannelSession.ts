@@ -101,6 +101,7 @@ function placeholderSnapshot(code: string): SessionSnapshot {
     selfTalking: false,
     participants: [],
     hasTurn: false,
+    iceReason: null,
     playbackBlocked: false,
   }
   snapshotCache.set(code, snapshot)
