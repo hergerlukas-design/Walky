@@ -109,6 +109,20 @@ describe('IceProvider', () => {
     expect(JSON.parse(init.body)).toEqual({ ttl: 7200 })
   })
 
+  it('nimmt auch die Dashboard-Schreibweise CLOUDFLARE_TURN_TOKEN_ID', async () => {
+    fetcher.mockResolvedValue(
+      okResponse({ iceServers: { urls: CLOUDFLARE_URLS, username: 'u', credential: 'c' } }),
+    )
+
+    const config = await provider({
+      CLOUDFLARE_TURN_TOKEN_ID: 'aus-dem-dashboard',
+      CLOUDFLARE_TURN_API_TOKEN: 'token',
+    }).get()
+
+    expect(config.hasTurn).toBe(true)
+    expect(fetcher.mock.calls[0][0]).toContain('/keys/aus-dem-dashboard/credentials/')
+  })
+
   it('fragt nicht bei jedem Beitritt neu an', async () => {
     fetcher.mockResolvedValue(
       okResponse({ iceServers: { urls: CLOUDFLARE_URLS, username: 'u', credential: 'c' } }),

@@ -11,7 +11,9 @@ const CREDENTIAL_TTL_SECONDS = 2 * 60 * 60
 const REFRESH_MARGIN_MS = 15 * 60 * 1000
 
 export interface IceProviderEnv {
+  /** Im Cloudflare-Dashboard "TURN Token ID"; beide Namen werden akzeptiert. */
   CLOUDFLARE_TURN_KEY_ID?: string
+  CLOUDFLARE_TURN_TOKEN_ID?: string
   CLOUDFLARE_TURN_API_TOKEN?: string
   TURN_URLS?: string
   TURN_USERNAME?: string
@@ -101,7 +103,9 @@ export class IceProvider {
   }
 
   private async load(): Promise<IceConfig> {
-    const keyId = this.env.CLOUDFLARE_TURN_KEY_ID
+    // Das Dashboard nennt die Kennung "TURN Token ID", die Doku "Key ID" —
+    // beide Schreibweisen gelten, damit niemand danach suchen muss.
+    const keyId = this.env.CLOUDFLARE_TURN_KEY_ID ?? this.env.CLOUDFLARE_TURN_TOKEN_ID
     const token = this.env.CLOUDFLARE_TURN_API_TOKEN
 
     if (keyId && token) {

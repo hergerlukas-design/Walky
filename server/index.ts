@@ -22,6 +22,7 @@ const server = createWalkyServer({
   // gebacken — änderbar ohne Neubau.
   iceEnv: {
     CLOUDFLARE_TURN_KEY_ID: process.env.CLOUDFLARE_TURN_KEY_ID,
+    CLOUDFLARE_TURN_TOKEN_ID: process.env.CLOUDFLARE_TURN_TOKEN_ID,
     CLOUDFLARE_TURN_API_TOKEN: process.env.CLOUDFLARE_TURN_API_TOKEN,
     TURN_URLS: process.env.TURN_URLS,
     TURN_USERNAME: process.env.TURN_USERNAME,

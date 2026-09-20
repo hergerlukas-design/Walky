@@ -179,8 +179,8 @@ Zur **Laufzeit** auf dem Server (auf Fly: `fly secrets set …`):
 
 | Variable                     | Wirkung                                                             |
 | ---------------------------- | ------------------------------------------------------------------- |
-| `CLOUDFLARE_TURN_KEY_ID`     | Cloudflare Realtime: Schlüssel-ID                                    |
-| `CLOUDFLARE_TURN_API_TOKEN`  | Cloudflare Realtime: API-Token                                       |
+| `CLOUDFLARE_TURN_TOKEN_ID`   | Cloudflare Realtime: „TURN Token ID" (Alias: `CLOUDFLARE_TURN_KEY_ID`) |
+| `CLOUDFLARE_TURN_API_TOKEN`  | Cloudflare Realtime: „API Token"                                     |
 | `TURN_URLS`                  | alternativ ein Anbieter mit festen Zugangsdaten (Komma-getrennt)     |
 | `TURN_USERNAME`              | Zugangsdaten dazu                                                    |
 | `TURN_CREDENTIAL`            | Zugangsdaten dazu                                                    |
@@ -208,12 +208,17 @@ nach zwölf Sekunden ohne Medienverbindung als hängend und nennt die Ursache
 Einrichtung mit Cloudflare Realtime (kostenloser Rahmen, kurzlebige
 Zugangsdaten):
 
-1. Im Cloudflare-Dashboard unter **Realtime → TURN** einen Schlüssel anlegen.
-2. Schlüssel-ID und API-Token als Secrets hinterlegen:
+1. Im Cloudflare-Dashboard unter **Realtime → TURN** einen TURN-Schlüssel
+   anlegen. Er liefert eine **TURN Token ID** und ein **API Token**.
+
+   Nicht zu verwechseln mit R2: „Access Key ID" und „Secret Access Key"
+   gehören zum Objektspeicher und funktionieren hier nicht.
+
+2. Beide Werte als Secrets hinterlegen:
 
    ```bash
    fly secrets set \
-     CLOUDFLARE_TURN_KEY_ID=... \
+     CLOUDFLARE_TURN_TOKEN_ID=... \
      CLOUDFLARE_TURN_API_TOKEN=... \
      -a walky-votoiw
    ```
