@@ -98,6 +98,8 @@ const de = {
     speaking: (name: string) => `${name} spricht`,
     sending: 'Du sendest — tippen zum Beenden',
     listeners: (count: number) => `${count} im Kanal`,
+    lastAction: (action: string, time: string) => `Medientaste: ${action} um ${time}`,
+    noAction: 'Medientaste bisher nicht ausgelöst',
   },
 
   ptt: {
@@ -241,6 +243,8 @@ const en: Translations = {
     speaking: (name: string) => `${name} is talking`,
     sending: 'You are transmitting — tap to stop',
     listeners: (count: number) => `${count} in channel`,
+    lastAction: (action: string, time: string) => `Media key: ${action} at ${time}`,
+    noAction: 'No media key pressed yet',
   },
 
   ptt: {

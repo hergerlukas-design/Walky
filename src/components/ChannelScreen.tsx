@@ -29,6 +29,15 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   const [unlockToken, setUnlockToken] = useState(0)
   useWakeLock(true)
   const { ensurePlaying } = useKeepAliveAudio(true)
+  // Diagnose für den Sperrbildschirm: hält fest, ob eine Medientaste den
+  // Handler überhaupt erreicht hat.
+  const [lastAction, setLastAction] = useState<{ action: string; at: string } | null>(null)
+  const onAction = useCallback((action: string, target: boolean) => {
+    setLastAction({
+      action: `${action} → ${target ? 'senden' : 'stopp'}`,
+      at: new Date().toLocaleTimeString(),
+    })
+  }, [])
 
   const {
     participants,
@@ -76,6 +85,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
     talking: snapshot.selfTalking,
     onTalkingChange: setTalking,
     ensurePlaying,
+    onAction,
   })
 
   return (
@@ -154,6 +164,12 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
       </div>
 
       <ParticipantList participants={participants} onToggleMute={setMuted} />
+
+      <p className="px-1 text-center text-[11px] text-shell-600">
+        {lastAction
+          ? t.lockScreen.lastAction(lastAction.action, lastAction.at)
+          : t.lockScreen.noAction}
+      </p>
 
       {remotes.map((participant) => (
         <RemoteAudio

@@ -11,6 +11,13 @@ export interface MediaSessionOptions {
   onTalkingChange(talking: boolean): void
   /** Hält die stille Schleife am Laufen, falls eine Taste sie pausiert hat. */
   ensurePlaying(): void
+  /**
+   * Meldet jeden Tastendruck. Ohne diese Rückmeldung ließe sich nicht
+   * unterscheiden, ob Android den Handler gar nicht aufruft — etwa weil das
+   * System die Seite angehalten hat — oder ob er läuft und erst das Senden
+   * danach scheitert.
+   */
+  onAction(action: string, target: boolean): void
 }
 
 /**
@@ -39,6 +46,7 @@ export function useMediaSession({
   talking,
   onTalkingChange,
   ensurePlaying,
+  onAction,
 }: MediaSessionOptions): void {
   useEffect(() => {
     if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return
@@ -84,8 +92,9 @@ export function useMediaSession({
     // Ein Knopf, zwei Zustände: Beide Tasten schalten um. Welches Symbol die
     // Plattform gerade zeichnet, ist damit gleichgültig — es tut immer das
     // Erwartete. Nur "stop" beendet ausdrücklich.
-    const toggle = () => {
-      onTalkingChange(!talking)
+    const run = (action: string, target: boolean) => {
+      onAction(action, target)
+      onTalkingChange(target)
       // Android pausiert bei "pause" mitunter auch das Element selbst. Ohne
       // laufende Wiedergabe verschwindet die Benachrichtigung — und mit ihr
       // die einzige Möglichkeit, die Übertragung wieder zu beenden.
@@ -93,13 +102,10 @@ export function useMediaSession({
     }
 
     const handlers: [string, MediaSessionActionHandler][] = [
-      ['play', toggle],
-      ['pause', toggle],
-      ['stop', () => {
-        onTalkingChange(false)
-        ensurePlaying()
-      }],
-      ['togglemicrophone', toggle],
+      ['play', () => run('play', !talking)],
+      ['pause', () => run('pause', !talking)],
+      ['stop', () => run('stop', false)],
+      ['togglemicrophone', () => run('togglemicrophone', !talking)],
     ]
 
     for (const [action, handler] of handlers) {
@@ -120,7 +126,7 @@ export function useMediaSession({
         }
       }
     }
-  }, [ensurePlaying, onTalkingChange, talking])
+  }, [ensurePlaying, onAction, onTalkingChange, talking])
 
   useEffect(() => {
     return () => {
