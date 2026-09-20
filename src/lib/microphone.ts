@@ -1,3 +1,5 @@
+import type { MicErrorCode } from '../types'
+
 /**
  * Audio-Einstellungen für Sprachfunk: Mono reicht, Echo-Unterdrückung ist
  * Pflicht, weil oft mehrere Geräte im selben Raum stehen.
@@ -10,12 +12,14 @@ const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
 }
 
 export class MicrophoneError extends Error {
-  readonly reason: 'denied' | 'unavailable'
+  readonly code: MicErrorCode
 
-  constructor(reason: 'denied' | 'unavailable', message: string) {
-    super(message)
+  constructor(code: MicErrorCode, cause?: unknown) {
+    // Die Meldung ist für Protokolle gedacht; was Leute lesen, entsteht aus
+    // dem Code in der Oberfläche.
+    super(`Mikrofon nicht verfügbar: ${code}`, { cause })
     this.name = 'MicrophoneError'
-    this.reason = reason
+    this.code = code
   }
 }
 
@@ -25,10 +29,7 @@ export class MicrophoneError extends Error {
  */
 export async function requestMicrophone(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new MicrophoneError(
-      'unavailable',
-      'Dieser Browser gibt kein Mikrofon frei. Die Seite muss über HTTPS laufen.',
-    )
+    throw new MicrophoneError('insecureContext')
   }
 
   try {
@@ -37,22 +38,14 @@ export async function requestMicrophone(): Promise<MediaStream> {
       video: false,
     })
   } catch (error) {
-    const name = error instanceof DOMException ? error.name : ''
-
-    if (name === 'NotAllowedError' || name === 'SecurityError') {
-      throw new MicrophoneError(
-        'denied',
-        'Mikrofonzugriff wurde abgelehnt. In den Browser-Einstellungen für diese Seite freigeben.',
-      )
-    }
-
-    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-      throw new MicrophoneError('unavailable', 'Kein Mikrofon gefunden.')
-    }
-
-    throw new MicrophoneError(
-      'unavailable',
-      error instanceof Error ? error.message : 'Mikrofon konnte nicht gestartet werden.',
-    )
+    throw new MicrophoneError(classify(error), error)
   }
+}
+
+function classify(error: unknown): MicErrorCode {
+  const name = error instanceof DOMException ? error.name : ''
+
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'denied'
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'notFound'
+  return 'unknown'
 }

@@ -19,6 +19,24 @@ export type PeerStatus =
   | 'failed'
   | 'closed'
 
+/**
+ * Fehler werden als Code durchgereicht, nicht als Text: Transport und
+ * Geräteschicht kennen keine Anzeigesprache. Übersetzt wird erst in der
+ * Oberfläche.
+ */
+export type MicErrorCode =
+  | 'denied'
+  | 'notFound'
+  | 'insecureContext'
+  | 'trackEnded'
+  | 'unknown'
+
+export type SignalingErrorCode =
+  | 'channelFull'
+  | 'invalidChannel'
+  | 'rejected'
+  | 'unreachable'
+
 export type MicState =
   | 'idle'
   | 'requesting'
@@ -44,9 +62,9 @@ export interface SessionSnapshot {
   selfId: PeerId
   selfName: string
   signaling: SignalingStatus
-  signalingError: string | null
+  signalingError: SignalingErrorCode | null
   mic: MicState
-  micError: string | null
+  micError: MicErrorCode | null
   selfTalking: boolean
   participants: Participant[]
   /** Tonausgabe wurde vom Browser blockiert — braucht eine Nutzergeste. */

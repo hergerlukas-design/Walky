@@ -2,14 +2,16 @@ import { useCallback, useMemo, useState } from 'react'
 import { useChannelSession } from '../hooks/useChannelSession'
 import { useOnline } from '../hooks/useOnline'
 import { useWakeLock } from '../hooks/useWakeLock'
+import { useTranslations } from '../i18n'
 import { hasTurnServer } from '../lib/env'
+import type { SignalingStatus } from '../types'
+import { LanguageToggle } from './LanguageToggle'
 import { ParticipantList } from './ParticipantList'
 import { PushToTalkButton } from './PushToTalkButton'
 import { RemoteAudio } from './RemoteAudio'
 import { ShareChannel } from './ShareChannel'
 import { StatusBanner } from './StatusBanner'
 import { LeaveIcon } from './Icons'
-import type { SignalingStatus } from '../types'
 
 interface ChannelScreenProps {
   code: string
@@ -18,6 +20,7 @@ interface ChannelScreenProps {
 }
 
 export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps) {
+  const t = useTranslations()
   const { snapshot, setTalking, setMuted, retryMicrophone, setPlaybackBlocked } =
     useChannelSession(code, displayName)
   const online = useOnline()
@@ -45,44 +48,42 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
 
   return (
     <main className="safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-5">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex items-center justify-between gap-2">
         <ConnectionPill status={signaling} online={online} />
-        <button
-          type="button"
-          onClick={onLeave}
-          className="flex items-center gap-2 rounded-lg border border-shell-700 px-3 py-2 text-sm text-shell-400 transition-colors hover:border-alert-400 hover:text-alert-400"
-        >
-          <LeaveIcon className="h-4 w-4" />
-          Verlassen
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <LanguageToggle />
+          <button
+            type="button"
+            onClick={onLeave}
+            className="flex items-center gap-2 rounded-lg border border-shell-700 px-3 py-2 text-sm text-shell-400 transition-colors hover:border-alert-400 hover:text-alert-400"
+          >
+            <LeaveIcon className="h-4 w-4" />
+            {t.channel.leave}
+          </button>
+        </div>
       </header>
 
       <ShareChannel code={code} />
 
       <div className="flex flex-col gap-2">
-        {!online && (
-          <StatusBanner tone="error">
-            Keine Netzverbindung. Walky verbindet sich automatisch neu, sobald
-            wieder Empfang da ist.
-          </StatusBanner>
-        )}
+        {!online && <StatusBanner tone="error">{t.channel.offlineBanner}</StatusBanner>}
 
         {online && signaling === 'error' && (
           <StatusBanner tone="error">
-            {signalingError ?? 'Verbindung zum Signaling-Server fehlgeschlagen.'}
+            {t.signalingErrors[signalingError ?? 'unreachable']}
           </StatusBanner>
         )}
 
         {online && signaling === 'reconnecting' && (
-          <StatusBanner tone="warn">Verbindung zum Kanal wird wiederhergestellt…</StatusBanner>
+          <StatusBanner tone="warn">{t.channel.reconnectingBanner}</StatusBanner>
         )}
 
         {micBroken && (
           <StatusBanner
             tone="warn"
-            action={{ label: 'Erneut versuchen', onClick: retryMicrophone }}
+            action={{ label: t.channel.micRetry, onClick: retryMicrophone }}
           >
-            {micError ?? 'Kein Mikrofonzugriff.'} Zuhören funktioniert trotzdem.
+            {t.micErrors[micError ?? 'unknown']} {t.channel.micBannerSuffix}
           </StatusBanner>
         )}
 
@@ -90,24 +91,19 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
           <StatusBanner
             tone="warn"
             action={{
-              label: 'Ton an',
+              label: t.channel.playbackUnlock,
               onClick: () => {
                 setPlaybackBlocked(false)
                 setUnlockToken((token) => token + 1)
               },
             }}
           >
-            Der Browser hat die Wiedergabe blockiert. Einmal tippen, dann ist der
-            Ton frei.
+            {t.channel.playbackBlocked}
           </StatusBanner>
         )}
 
         {anyFailed && !hasTurnServer && (
-          <StatusBanner tone="warn">
-            Zu mindestens einem Gerät kommt keine direkte Verbindung zustande.
-            Das passiert in Mobilfunk- und Firmennetzen — dafür braucht es einen
-            TURN-Server.
-          </StatusBanner>
+          <StatusBanner tone="warn">{t.channel.noDirectConnection}</StatusBanner>
         )}
       </div>
 
@@ -115,11 +111,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
         <PushToTalkButton
           onChange={setTalking}
           disabled={micBroken || signaling === 'error'}
-          disabledHint={
-            signaling === 'error'
-              ? 'Ohne Kanalverbindung kann nicht gesendet werden.'
-              : 'Ohne Mikrofon kannst du nur zuhören.'
-          }
+          disabledHint={signaling === 'error' ? t.ptt.noChannel : t.ptt.noMic}
         />
       </div>
 
@@ -138,20 +130,16 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   )
 }
 
-function ConnectionPill({
-  status,
-  online,
-}: {
-  status: SignalingStatus
-  online: boolean
-}) {
+function ConnectionPill({ status, online }: { status: SignalingStatus; online: boolean }) {
+  const t = useTranslations()
+
   const [label, tone] = !online
-    ? ['offline', 'bg-alert-400']
+    ? [t.channel.statusOffline, 'bg-alert-400']
     : status === 'connected'
-      ? ['im Kanal', 'bg-live-400']
+      ? [t.channel.statusConnected, 'bg-live-400']
       : status === 'error'
-        ? ['getrennt', 'bg-alert-400']
-        : ['verbindet…', 'bg-signal-400']
+        ? [t.channel.statusDisconnected, 'bg-alert-400']
+        : [t.channel.statusConnecting, 'bg-signal-400']
 
   return (
     <span className="flex items-center gap-2 rounded-full border border-shell-700 bg-shell-800/60 px-3 py-2 text-xs tracking-wide text-shell-400 uppercase">

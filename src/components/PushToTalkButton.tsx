@@ -1,4 +1,5 @@
 import { usePushToTalk } from '../hooks/usePushToTalk'
+import { useTranslations } from '../i18n'
 import { MicIcon, MicOffIcon } from './Icons'
 
 interface PushToTalkButtonProps {
@@ -12,6 +13,7 @@ interface PushToTalkButtonProps {
  * Finger darf beim Sprechen verrutschen, ohne dass die Übertragung abbricht.
  */
 export function PushToTalkButton({ onChange, disabled, disabledHint }: PushToTalkButtonProps) {
+  const t = useTranslations()
   const { talking, locked, toggleLock, handlers } = usePushToTalk({ onChange, disabled })
 
   return (
@@ -29,7 +31,7 @@ export function PushToTalkButton({ onChange, disabled, disabledHint }: PushToTal
           {...handlers}
           disabled={disabled}
           aria-pressed={talking}
-          aria-label={talking ? 'Sendet — loslassen zum Beenden' : 'Zum Sprechen gedrückt halten'}
+          aria-label={talking ? t.ptt.sendingAria : t.ptt.holdAria}
           className={[
             'relative z-10 flex h-52 w-52 select-none flex-col items-center justify-center gap-2',
             'rounded-full border-4 transition-[transform,background-color,border-color] duration-100',
@@ -39,13 +41,9 @@ export function PushToTalkButton({ onChange, disabled, disabledHint }: PushToTal
               : 'border-shell-600 bg-shell-800 text-shell-200 active:scale-95 hover:border-shell-400',
           ].join(' ')}
         >
-          {disabled ? (
-            <MicOffIcon className="h-14 w-14" />
-          ) : (
-            <MicIcon className="h-14 w-14" />
-          )}
+          {disabled ? <MicOffIcon className="h-14 w-14" /> : <MicIcon className="h-14 w-14" />}
           <span className="font-display text-sm tracking-[0.2em] uppercase">
-            {talking ? 'Sendet' : 'Sprechen'}
+            {talking ? t.ptt.sending : t.ptt.idle}
           </span>
         </button>
       </div>
@@ -66,11 +64,9 @@ export function PushToTalkButton({ onChange, disabled, disabledHint }: PushToTal
                   : 'border-shell-600 text-shell-400 hover:border-shell-400 hover:text-shell-200',
               ].join(' ')}
             >
-              {locked ? 'Dauersenden aus' : 'Freihändig'}
+              {locked ? t.ptt.lockOff : t.ptt.lockOn}
             </button>
-            <p className="text-center text-xs text-shell-400">
-              Gedrückt halten zum Sprechen — am Rechner auch mit der Leertaste.
-            </p>
+            <p className="text-center text-xs text-shell-400">{t.ptt.hint}</p>
           </>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { channelUrl, formatChannelCode } from '../../shared/channelCode'
+import { useTranslations } from '../i18n'
 import { CheckIcon, LinkIcon, QrIcon } from './Icons'
 
 interface ShareChannelProps {
@@ -11,6 +12,7 @@ interface ShareChannelProps {
  * Drei Wege in denselben Kanal: Code vorlesen, Link teilen, QR scannen.
  */
 export function ShareChannel({ code }: ShareChannelProps) {
+  const t = useTranslations()
   const [showQr, setShowQr] = useState(false)
   const [copied, setCopied] = useState(false)
   const url = channelUrl(code, window.location.origin)
@@ -26,7 +28,7 @@ export function ShareChannel({ code }: ShareChannelProps) {
     // landet der Link in der Zwischenablage.
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Walky-Kanal', text: `Kanal ${code}`, url })
+        await navigator.share({ title: t.share.shareTitle, text: t.share.shareText(code), url })
         return
       } catch {
         /* abgebrochen — dann eben kopieren */
@@ -37,7 +39,7 @@ export function ShareChannel({ code }: ShareChannelProps) {
       await navigator.clipboard.writeText(url)
       setCopied(true)
     } catch {
-      window.prompt('Link kopieren:', url)
+      window.prompt(t.share.copyPrompt, url)
     }
   }
 
@@ -46,7 +48,7 @@ export function ShareChannel({ code }: ShareChannelProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-display text-xs tracking-[0.2em] text-shell-400 uppercase">
-            Kanal
+            {t.share.channelLabel}
           </p>
           <p className="font-display text-2xl tracking-[0.3em] text-signal-400 uppercase">
             {formatChannelCode(code)}
@@ -60,14 +62,14 @@ export function ShareChannel({ code }: ShareChannelProps) {
             className="flex items-center gap-2 rounded-lg border border-shell-600 px-3 py-2 text-sm text-shell-200 transition-colors hover:border-shell-400"
           >
             {copied ? <CheckIcon className="h-4 w-4 text-live-400" /> : <LinkIcon className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? 'Kopiert' : 'Teilen'}</span>
+            <span className="hidden sm:inline">{copied ? t.share.copied : t.share.share}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowQr((value) => !value)}
             aria-expanded={showQr}
-            aria-label="QR-Code anzeigen"
+            aria-label={t.share.showQr}
             className={[
               'rounded-lg border p-2 transition-colors',
               showQr
@@ -86,6 +88,7 @@ export function ShareChannel({ code }: ShareChannelProps) {
 }
 
 function QrPanel({ url }: { url: string }) {
+  const t = useTranslations()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState(false)
 
@@ -103,9 +106,9 @@ function QrPanel({ url }: { url: string }) {
   return (
     <div className="mt-4 flex flex-col items-center gap-3 border-t border-shell-700 pt-4">
       {error ? (
-        <p className="text-sm text-alert-400">QR-Code konnte nicht erzeugt werden.</p>
+        <p className="text-sm text-alert-400">{t.share.qrFailed}</p>
       ) : (
-        <canvas ref={canvasRef} className="rounded-lg bg-white p-2" aria-label="QR-Code zum Kanal" />
+        <canvas ref={canvasRef} className="rounded-lg bg-white p-2" aria-label={t.share.qrAlt} />
       )}
       <p className="text-center text-xs break-all text-shell-400">{url}</p>
     </div>

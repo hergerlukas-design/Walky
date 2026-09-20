@@ -127,6 +127,43 @@ aber mit `track.enabled = false`. Übertragen wird erst bei gedrückter Taste.
 So gibt es genau einen Berechtigungsdialog und trotzdem keine offene
 Leitung.
 
+## Sprachen
+
+Die Oberfläche gibt es auf Deutsch und Englisch. Ohne gespeicherte Auswahl
+entscheidet die Browsersprache: Deutsch nur bei ausdrücklich deutscher
+Einstellung, sonst Englisch als die breitere Vorgabe. Der Umschalter oben
+rechts merkt sich die Wahl und setzt nebenbei `<html lang>`.
+
+Kein i18n-Framework — bei zwei Sprachen ohne Pluralregeln und Datumsformate
+wäre das mehr Abhängigkeit als Nutzen. Stattdessen zwei Wörterbücher in
+[`src/i18n/translations.ts`](src/i18n/translations.ts), wobei sich der Typ
+`Translations` aus der deutschen Fassung ableitet: Fehlt in einer Sprache ein
+Schlüssel oder weicht eine Signatur ab, scheitert der Typecheck. Einsetzungen
+sind Funktionen (`heading(count)`, `mute(name)`), keine Platzhalter-Strings.
+
+Fehler aus Transport und Geräteschicht reisen als Code, nicht als fertiger
+Satz — übersetzt wird erst in der Oberfläche. Ein neuer Text gehört deshalb
+nie in `signaling.ts` oder `microphone.ts`, sondern ins Wörterbuch.
+
+Das Manifest bleibt englisch: Es ist eine einzelne statische Datei und kennt
+keine Sprachvarianten.
+
+## Aktualisierungen
+
+Neue Fassungen drängen sich nicht auf. Der Service Worker läuft im
+Rückfrage-Modus (`registerType: 'prompt'`, kein `clientsClaim`): Eine neue
+Version wird geladen, wartet dann aber, bis jemand im Banner zustimmt. Ein
+selbsttätiger Neustart würde mitten im Gespräch die Kanalverbindung kappen —
+steht man gerade in einem Kanal, sagt das Banner das auch dazu.
+
+„Später" blendet nur den Hinweis aus; die wartende Fassung übernimmt beim
+nächsten vollständigen Start von selbst. Niemand bleibt dauerhaft auf einer
+alten Version sitzen.
+
+Eine installierte PWA, die tagelang offen bleibt, sucht von sich aus nur beim
+Seitenaufruf nach Neuem. [`usePwaUpdate`](src/hooks/usePwaUpdate.ts) prüft
+deshalb zusätzlich alle 30 Minuten und beim Zurückkehren in den Vordergrund.
+
 ## Konfiguration
 
 Alle Werte sind optional; ohne Konfiguration läuft die App gegen den eigenen
@@ -203,15 +240,21 @@ Workflow prüft die Antwort nach jedem Deploy.
 
 ## Was geprüft ist
 
-`npm test` deckt Kanal-Codes, die Protokollprüfung und die Kanalverwaltung
-ab und fährt für die Integrationstests einen echten Server auf einem echten
-Port hoch (Beitritt, gezielte Zustellung, Kanaltrennung, voller Kanal,
-fehlerhafte Nachrichten, Abgang).
+`npm test` deckt Kanal-Codes, die Protokollprüfung, die Kanalverwaltung und
+die Wörterbücher ab (gleiche Schlüssel in beiden Sprachen, keine leeren
+Texte, Spracherkennung) und fährt für die Integrationstests einen echten
+Server auf einem echten Port hoch (Beitritt, gezielte Zustellung,
+Kanaltrennung, voller Kanal, fehlerhafte Nachrichten, Abgang).
 
 Zusätzlich manuell gegen zwei bzw. drei echte Chromium-Instanzen geprüft:
 Vollvermaschung steht, genau eine Audiospur je Verbindung, messbare
 Audio-Energie beim Empfänger während des Sprechens, Sprecheranzeige und
 Abgangserkennung.
+
+Ebenso geprüft: beide Sprachen samt Browsererkennung und Wechsel im laufenden
+Kanal, und der Aktualisierungsablauf gegen eine tatsächlich zweite gebaute
+Fassung — Banner erscheint, die neue Version wartet, die laufende bleibt
+unangetastet, nach der Zustimmung ist sie aktiv.
 
 **Noch offen:** der echte Mikrofon-Flow auf iOS-Safari und Android-Chrome auf
 physischen Geräten. Der aus dem Prototyp bekannte Stolperstein — Mikrofon in

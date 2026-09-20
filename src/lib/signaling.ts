@@ -9,7 +9,19 @@ import {
   type SessionDescription,
 } from '../../shared/protocol'
 import { getSignalingBaseUrl } from './env'
-import type { SignalingStatus } from '../types'
+import type { SignalingErrorCode, SignalingStatus } from '../types'
+
+/** Der Server schließt mit 1008 und dem Grund als Close-Reason. */
+function fatalCode(reason: string): SignalingErrorCode {
+  switch (reason) {
+    case 'channel_full':
+      return 'channelFull'
+    case 'invalid_channel':
+      return 'invalidChannel'
+    default:
+      return 'rejected'
+  }
+}
 
 const RECONNECT_BASE_MS = 500
 const RECONNECT_MAX_MS = 15_000
@@ -22,9 +34,9 @@ export interface SignalingHandlers {
   onDescription(from: PeerId, description: SessionDescription): void
   onCandidate(from: PeerId, candidate: IceCandidate): void
   onTalk(from: PeerId, talking: boolean): void
-  onStatus(status: SignalingStatus, error?: string): void
+  onStatus(status: SignalingStatus, error?: SignalingErrorCode): void
   /** Der Server hat die Verbindung endgültig abgelehnt (z. B. Kanal voll). */
-  onFatal(message: string): void
+  onFatal(code: SignalingErrorCode): void
 }
 
 export interface SignalingOptions {
@@ -78,10 +90,8 @@ export class Signaling {
     try {
       socket = new WebSocket(this.url)
     } catch (error) {
-      this.handlers.onStatus(
-        'error',
-        error instanceof Error ? error.message : 'Verbindung nicht möglich.',
-      )
+      console.warn('[walky] WebSocket nicht erstellbar', error)
+      this.handlers.onStatus('error', 'unreachable')
       this.scheduleReconnect()
       return
     }
@@ -105,7 +115,7 @@ export class Signaling {
     socket.onerror = () => {
       // Details liefert der Browser aus Sicherheitsgründen nicht; das
       // anschließende close-Event übernimmt die Wiederverbindung.
-      this.handlers.onStatus('reconnecting', 'Verbindung zum Signaling-Server gestört.')
+      this.handlers.onStatus('reconnecting', 'unreachable')
     }
 
     socket.onclose = (event) => {
@@ -117,24 +127,13 @@ export class Signaling {
       // 1008 = Policy Violation: der Server hat uns bewusst abgewiesen,
       // ein erneuter Versuch würde genauso enden.
       if (event.code === 1008) {
-        this.handlers.onFatal(this.fatalMessage(event.reason))
+        this.handlers.onFatal(fatalCode(event.reason))
         return
       }
 
       this.peers.clear()
       this.handlers.onPeers([])
       this.scheduleReconnect()
-    }
-  }
-
-  private fatalMessage(reason: string): string {
-    switch (reason) {
-      case 'channel_full':
-        return 'Der Kanal ist voll. Für größere Gruppen braucht es einen Media-Server (SFU).'
-      case 'invalid_channel':
-        return 'Ungültiger Kanal-Code.'
-      default:
-        return 'Der Signaling-Server hat die Verbindung abgelehnt.'
     }
   }
 
@@ -178,7 +177,7 @@ export class Signaling {
         break
       case 'error':
         console.warn('[walky] Serverfehler:', message.code, message.message)
-        if (message.code === 'channel_full') this.handlers.onFatal(message.message)
+        if (message.code === 'channel_full') this.handlers.onFatal('channelFull')
         break
       case 'pong':
         break

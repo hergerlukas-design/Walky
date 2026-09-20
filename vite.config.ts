@@ -8,14 +8,23 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Rückfrage statt automatischem Austausch: Ein selbsttätiger Neustart
+      // würde mitten im Gespräch die Kanalverbindung kappen. Der neue
+      // Service Worker wartet, bis jemand im Banner zustimmt.
+      registerType: 'prompt',
+      // Registriert wird ausschließlich über useRegisterSW, sonst liefe die
+      // Anmeldung doppelt.
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'robots.txt'],
       manifest: {
         name: 'Walky — Walkie-Talkie',
         short_name: 'Walky',
+        // Das Manifest ist eine einzelne statische Datei und kennt keine
+        // Sprachvarianten. Englisch erreicht mehr Leute; die Oberfläche
+        // selbst richtet sich nach der Browsersprache.
         description:
-          'Push-to-Talk für Gruppen: Kanal beitreten, Knopf drücken, sprechen. Ohne Anruf, ohne App Store.',
-        lang: 'de',
+          'Push-to-talk for groups: join a channel, press the button, speak. No call, no app store.',
+        lang: 'en',
         dir: 'ltr',
         start_url: '/',
         scope: '/',
@@ -36,8 +45,8 @@ export default defineConfig({
         ],
         shortcuts: [
           {
-            name: 'Neuen Kanal öffnen',
-            short_name: 'Neuer Kanal',
+            name: 'Open a new channel',
+            short_name: 'New channel',
             url: '/?neu=1',
           },
         ],
@@ -47,7 +56,9 @@ export default defineConfig({
         // Jede unbekannte Route auf die SPA-Shell mappen (/kanal/abc123).
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
+        // Kein clientsClaim/skipWaiting: Der wartende Worker übernimmt erst,
+        // wenn das Banner bestätigt wurde.
+        clientsClaim: false,
       },
       devOptions: {
         // Service Worker auch im Dev-Server, damit PWA-Verhalten testbar ist.

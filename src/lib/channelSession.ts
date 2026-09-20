@@ -4,11 +4,13 @@ import { Signaling } from './signaling'
 import { getIceServers } from './env'
 import type { PeerInfo } from '../../shared/protocol'
 import type {
+  MicErrorCode,
   MicState,
   Participant,
   PeerId,
   PeerStatus,
   SessionSnapshot,
+  SignalingErrorCode,
   SignalingStatus,
 } from '../types'
 
@@ -54,9 +56,9 @@ export class ChannelSession {
 
   private localStream: MediaStream | null = null
   private micState: MicState = 'idle'
-  private micError: string | null = null
+  private micError: MicErrorCode | null = null
   private signalingStatus: SignalingStatus = 'idle'
-  private signalingError: string | null = null
+  private signalingError: SignalingErrorCode | null = null
   private selfTalking = false
   private playbackBlocked = false
   private talkGuard: ReturnType<typeof setTimeout> | null = null
@@ -114,9 +116,9 @@ export class ChannelSession {
           if (status === 'connected') this.signalingError = null
           this.publish()
         },
-        onFatal: (message) => {
+        onFatal: (code) => {
           this.signalingStatus = 'error'
-          this.signalingError = message
+          this.signalingError = code
           this.mesh.close()
           this.peers.clear()
           this.publish()
@@ -164,7 +166,7 @@ export class ChannelSession {
           this.localStream = null
           this.mesh.setLocalStream(null)
           this.micState = 'unavailable'
-          this.micError = 'Die Mikrofon-Verbindung wurde unterbrochen.'
+          this.micError = 'trackEnded'
           this.publish()
         }
       }
@@ -175,9 +177,9 @@ export class ChannelSession {
       this.publish()
       return true
     } catch (error) {
-      const reason = error instanceof MicrophoneError ? error.reason : 'unavailable'
-      this.micState = reason === 'denied' ? 'denied' : 'unavailable'
-      this.micError = error instanceof Error ? error.message : 'Mikrofon nicht verfügbar.'
+      const code: MicErrorCode = error instanceof MicrophoneError ? error.code : 'unknown'
+      this.micState = code === 'denied' ? 'denied' : 'unavailable'
+      this.micError = code
       this.publish()
       return false
     }
