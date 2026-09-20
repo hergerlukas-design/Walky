@@ -1,6 +1,7 @@
 # Fly.io-Deployment. Ein Prozess liefert die PWA aus und betreibt das
 # Signaling — deshalb genügt eine App und ein Zertifikat.
-app = 'walky'
+# Den Namen hat `fly launch` vergeben, weil 'walky' bereits belegt war.
+app = 'walky-votoiw'
 primary_region = 'fra'
 
 [build]
