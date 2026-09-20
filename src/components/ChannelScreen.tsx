@@ -3,7 +3,6 @@ import { useChannelSession } from '../hooks/useChannelSession'
 import { useOnline } from '../hooks/useOnline'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useTranslations } from '../i18n'
-import { hasTurnServer } from '../lib/env'
 import type { SignalingStatus } from '../types'
 import { LanguageToggle } from './LanguageToggle'
 import { ParticipantList } from './ParticipantList'
@@ -28,7 +27,8 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   const [unlockToken, setUnlockToken] = useState(0)
   useWakeLock(true)
 
-  const { participants, signaling, signalingError, mic, micError, playbackBlocked } = snapshot
+  const { participants, signaling, signalingError, mic, micError, hasTurn, playbackBlocked } =
+    snapshot
 
   const remotes = useMemo(
     () => participants.filter((participant) => !participant.isSelf && participant.stream),
@@ -108,7 +108,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
 
         {mediaStuck && (
           <StatusBanner tone="warn">
-            {hasTurnServer
+            {hasTurn
               ? t.channel.noDirectConnectionWithTurn
               : t.channel.noDirectConnectionNoTurn}
           </StatusBanner>

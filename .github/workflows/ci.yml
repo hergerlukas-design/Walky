@@ -49,21 +49,11 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deployen
-        # Vite backt VITE_*-Variablen fest in das Bundle ein, sie müssen
-        # deshalb zur Buildzeit anliegen. Nicht gesetzte Secrets kommen als
-        # leerer String an — genau die Vorgabe aus dem Dockerfile.
-        run: |
-          flyctl deploy --remote-only \
-            --build-arg VITE_TURN_URLS="$VITE_TURN_URLS" \
-            --build-arg VITE_TURN_USERNAME="$VITE_TURN_USERNAME" \
-            --build-arg VITE_TURN_CREDENTIAL="$VITE_TURN_CREDENTIAL" \
-            --build-arg VITE_STUN_URLS="$VITE_STUN_URLS"
+        # TURN-Zugangsdaten gehen nicht durch den Build: sie liegen als
+        # Fly-Secrets auf dem Server und werden unter /api/ice ausgeliefert.
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          VITE_TURN_URLS: ${{ secrets.VITE_TURN_URLS }}
-          VITE_TURN_USERNAME: ${{ secrets.VITE_TURN_USERNAME }}
-          VITE_TURN_CREDENTIAL: ${{ secrets.VITE_TURN_CREDENTIAL }}
-          VITE_STUN_URLS: ${{ secrets.VITE_STUN_URLS }}
 
       - name: Öffentliche IP-Adressen sicherstellen
         # Fly vergibt sie erst beim ersten erfolgreichen Deploy. Scheitert der

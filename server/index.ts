@@ -16,7 +16,19 @@ const clientDir = process.env.CLIENT_DIR
   ? resolve(process.env.CLIENT_DIR)
   : resolve(here, '../../dist')
 
-const server = createWalkyServer({ clientDir })
+const server = createWalkyServer({
+  clientDir,
+  // Laufzeit-Geheimnisse (auf Fly: `fly secrets set …`), nicht ins Bundle
+  // gebacken — änderbar ohne Neubau.
+  iceEnv: {
+    CLOUDFLARE_TURN_KEY_ID: process.env.CLOUDFLARE_TURN_KEY_ID,
+    CLOUDFLARE_TURN_API_TOKEN: process.env.CLOUDFLARE_TURN_API_TOKEN,
+    TURN_URLS: process.env.TURN_URLS,
+    TURN_USERNAME: process.env.TURN_USERNAME,
+    TURN_CREDENTIAL: process.env.TURN_CREDENTIAL,
+    STUN_URLS: process.env.STUN_URLS,
+  },
+})
 
 const port = await server.listen(PORT, HOST)
 console.log(

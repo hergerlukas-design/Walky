@@ -11,15 +11,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Vite backt VITE_*-Variablen fest ein, deshalb müssen sie hier anliegen.
-ARG VITE_TURN_URLS=""
-ARG VITE_TURN_USERNAME=""
-ARG VITE_TURN_CREDENTIAL=""
-ARG VITE_STUN_URLS=""
-ENV VITE_TURN_URLS=$VITE_TURN_URLS \
-    VITE_TURN_USERNAME=$VITE_TURN_USERNAME \
-    VITE_TURN_CREDENTIAL=$VITE_TURN_CREDENTIAL \
-    VITE_STUN_URLS=$VITE_STUN_URLS
+# Keine TURN-Zugangsdaten im Build: die liefert der Server zur Laufzeit unter
+# /api/ice aus. Sonst lägen sie im öffentlichen Bundle und im Image.
 RUN npm run build
 
 # ----------------------------------------------------------- Produktionspaket

@@ -23,7 +23,7 @@ Gerät A ──┐                        ┌── Gerät B
 | Frontend   | React 19, TypeScript, Vite 8, Tailwind CSS 4            |
 | PWA        | `vite-plugin-pwa` (Workbox), Manifest, Service Worker   |
 | Signaling  | Eigener WebSocket-Server (Node 22 + `ws`), ~430 Zeilen  |
-| Audio      | WebRTC-Mesh, Opus, Push-to-Talk                         |
+| Audio      | WebRTC-Mesh, Opus, Push-to-Talk, TURN über `/api/ice`   |
 | Auslieferung | Derselbe Node-Prozess liefert auch die gebaute PWA aus |
 | Hosting    | Fly.io (ein Container, ein Origin)                      |
 
@@ -169,27 +169,62 @@ deshalb zusätzlich alle 30 Minuten und beim Zurückkehren in den Vordergrund.
 Alle Werte sind optional; ohne Konfiguration läuft die App gegen den eigenen
 Origin. Vorlage: [`.env.example`](.env.example).
 
-| Variable               | Wirkung                                                           |
-| ---------------------- | ----------------------------------------------------------------- |
-| `VITE_SIGNALING_URL`   | Signaling-Server, falls er nicht unter demselben Origin läuft      |
-| `VITE_STUN_URLS`       | eigene STUN-Server (Komma-getrennt), Default: Google               |
-| `VITE_TURN_URLS`       | TURN-Relay (Komma-getrennt)                                        |
-| `VITE_TURN_USERNAME`   | TURN-Zugangsdaten                                                  |
-| `VITE_TURN_CREDENTIAL` | TURN-Zugangsdaten                                                  |
-| `PORT`, `HOST`         | Server-Bindung (Default `8080` / `0.0.0.0`)                        |
-| `CLIENT_DIR`           | Verzeichnis mit dem PWA-Build (Default: `dist` neben `dist-server`) |
+Zur **Buildzeit** (Vite backt sie in das Bundle ein):
 
-`VITE_*`-Variablen backt Vite fest in den Build ein — sie müssen also schon
-beim Bauen anliegen, nicht erst zur Laufzeit (siehe `ARG` im Dockerfile).
+| Variable             | Wirkung                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `VITE_SIGNALING_URL` | Signaling-Server, falls er nicht unter demselben Origin läuft |
+
+Zur **Laufzeit** auf dem Server (auf Fly: `fly secrets set …`):
+
+| Variable                     | Wirkung                                                             |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `CLOUDFLARE_TURN_KEY_ID`     | Cloudflare Realtime: Schlüssel-ID                                    |
+| `CLOUDFLARE_TURN_API_TOKEN`  | Cloudflare Realtime: API-Token                                       |
+| `TURN_URLS`                  | alternativ ein Anbieter mit festen Zugangsdaten (Komma-getrennt)     |
+| `TURN_USERNAME`              | Zugangsdaten dazu                                                    |
+| `TURN_CREDENTIAL`            | Zugangsdaten dazu                                                    |
+| `STUN_URLS`                  | eigene STUN-Server (Komma-getrennt), Default: Google                 |
+| `PORT`, `HOST`               | Server-Bindung (Default `8080` / `0.0.0.0`)                          |
+| `CLIENT_DIR`                 | Verzeichnis mit dem PWA-Build (Default: `dist` neben `dist-server`)  |
+
+TURN-Zugangsdaten sind bewusst **keine** Buildzeit-Variablen: Sie lägen sonst
+im öffentlichen Bundle und jede Änderung bräuchte einen Neubau. Stattdessen
+liefert der Server sie unter `GET /api/ice` aus — als Fly-Secret hinterlegt,
+ohne Deploy austauschbar und bei Cloudflare mit zwei Stunden Gültigkeit.
 
 ### TURN: wann es ohne nicht geht
 
-STUN reicht in den meisten WLANs. Hinter symmetrischem NAT — häufig im
-Mobilfunk und in Firmennetzen — kommt keine direkte Verbindung zustande;
-dann braucht es ein TURN-Relay, über das der Ton läuft. Erfahrungswert:
-etwa 10–20 % der Verbindungen. Ohne TURN weist die App in solchen Fällen
-sichtbar darauf hin, statt still nichts zu übertragen. Fertige Dienste:
-Cloudflare Calls, Twilio, Metered; selbst gehostet: coturn.
+STUN reicht in den meisten WLANs. Hinter symmetrischem NAT — im Mobilfunk
+praktisch immer, in Firmennetzen häufig — kommt keine direkte Verbindung
+zustande; dann braucht es ein TURN-Relay, über das der Ton läuft.
+
+Das Fehlerbild ist tückisch, weil fast alles funktioniert: Beitreten, die
+Teilnehmerliste und die Sprecher-Anzeige laufen über den WebSocket und sind
+unbeeindruckt. Nur hört man niemanden. Die App markiert einen Peer deshalb
+nach zwölf Sekunden ohne Medienverbindung als hängend und nennt die Ursache
+— der Browser selbst meldet `failed` erst nach rund 30 Sekunden.
+
+Einrichtung mit Cloudflare Realtime (kostenloser Rahmen, kurzlebige
+Zugangsdaten):
+
+1. Im Cloudflare-Dashboard unter **Realtime → TURN** einen Schlüssel anlegen.
+2. Schlüssel-ID und API-Token als Secrets hinterlegen:
+
+   ```bash
+   fly secrets set \
+     CLOUDFLARE_TURN_KEY_ID=... \
+     CLOUDFLARE_TURN_API_TOKEN=... \
+     -a walky-votoiw
+   ```
+
+   Geht auch im Fly-Dashboard unter *Secrets*. Fly startet die Maschine
+   danach von selbst neu; ein Deploy ist nicht nötig.
+
+Ein Anbieter mit festen Zugangsdaten (Metered, Twilio, eigenes coturn) wird
+über `TURN_URLS`, `TURN_USERNAME` und `TURN_CREDENTIAL` genauso eingebunden.
+Fällt der Anbieter aus, liefert `/api/ice` weiter STUN aus — im selben Netz
+funktioniert der Kanal dann unverändert.
 
 ## Deployment (Fly.io)
 
@@ -198,23 +233,13 @@ ein Zertifikat, kein CORS.
 
 **Automatisch:** Jeder Push auf `main` deployt, sobald Typen, Lint, Tests und
 Build durch sind (`.github/workflows/ci.yml`). Voraussetzung ist das
-Repository-Secret `FLY_API_TOKEN` aus `fly tokens create deploy`.
+Repository-Secret `FLY_API_TOKEN` aus `fly tokens create deploy`. TURN-Daten
+gehen den Deploy nichts an — die liegen als Fly-Secrets auf dem Server.
 
 **Von Hand:**
 
 ```bash
 fly deploy
-```
-
-TURN-Zugangsdaten hinterlegt man als Repository-Secrets (`VITE_TURN_URLS`,
-`VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`), der Workflow reicht sie als
-Build-Args durch. Von Hand entsprechend:
-
-```bash
-fly deploy \
-  --build-arg VITE_TURN_URLS=turn:turn.example.com:3478 \
-  --build-arg VITE_TURN_USERNAME=walky \
-  --build-arg VITE_TURN_CREDENTIAL=geheim
 ```
 
 > **Eine Instanz.** Die Kanalzuordnung liegt im Arbeitsspeicher. Mit zwei
@@ -236,7 +261,9 @@ fly deploy \
 > nach Kanal-Code.
 
 `GET /healthz` liefert Status und die Zahl offener Kanäle und Teilnehmer; der
-Workflow prüft die Antwort nach jedem Deploy.
+Workflow prüft die Antwort nach jedem Deploy. `GET /api/ice` zeigt, welche
+ICE-Server die Clients bekommen — praktisch, um eine TURN-Einrichtung zu
+kontrollieren (`hasTurn` muss `true` sein).
 
 ## Was geprüft ist
 

@@ -1,63 +1,68 @@
+import { ICE_PATH, type IceConfig, type IceServerConfig } from '../../shared/protocol'
+
 /**
- * Laufzeit-Konfiguration aus Vite-Env-Variablen. Bewusst so gewählt, dass die
- * App ohne jede Konfiguration läuft, solange Signaling-Server und PWA
- * denselben Origin teilen — das ist im Fly-Deployment der Fall.
+ * Laufzeit-Konfiguration. Bewusst so gewählt, dass die App ohne jede
+ * Einstellung läuft, solange Signaling-Server und PWA denselben Origin
+ * teilen — das ist im Fly-Deployment der Fall.
  */
 
-const str = (value: unknown): string =>
-  typeof value === 'string' ? value.trim() : ''
-
-const list = (value: unknown): string[] =>
-  str(value)
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
+const str = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
 const CONFIGURED_SIGNALING_URL = str(import.meta.env.VITE_SIGNALING_URL)
 
 /**
  * Basis-URL des Signaling-Servers ohne Pfad, z. B. `wss://walky.fly.dev`.
- * Ohne explizite Konfiguration wird der eigene Origin verwendet — über HTTPS
+ * Ohne explizite Angabe wird der eigene Origin verwendet — über HTTPS
  * automatisch `wss:`.
  */
 export function getSignalingBaseUrl(): string {
-  if (CONFIGURED_SIGNALING_URL) {
-    return CONFIGURED_SIGNALING_URL.replace(/\/+$/, '')
-  }
+  if (CONFIGURED_SIGNALING_URL) return CONFIGURED_SIGNALING_URL.replace(/\/+$/, '')
 
   const { protocol, host } = window.location
   return `${protocol === 'https:' ? 'wss:' : 'ws:'}//${host}`
 }
 
-const DEFAULT_STUN = [
-  'stun:stun.l.google.com:19302',
-  'stun:stun1.l.google.com:19302',
-]
+/** Notnagel, falls der Server nicht antwortet: STUN reicht im selben Netz. */
+const FALLBACK_ICE: IceConfig = {
+  iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }],
+  hasTurn: false,
+}
 
-const TURN_URLS = list(import.meta.env.VITE_TURN_URLS)
-const TURN_USERNAME = str(import.meta.env.VITE_TURN_USERNAME)
-const TURN_CREDENTIAL = str(import.meta.env.VITE_TURN_CREDENTIAL)
+function iceEndpoint(): string {
+  if (!CONFIGURED_SIGNALING_URL) return ICE_PATH
+  return `${CONFIGURED_SIGNALING_URL.replace(/^ws/, 'http').replace(/\/+$/, '')}${ICE_PATH}`
+}
 
-export const hasTurnServer = TURN_URLS.length > 0
+function isIceConfig(value: unknown): value is IceConfig {
+  const candidate = value as IceConfig | null
+  return (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    Array.isArray(candidate.iceServers) &&
+    candidate.iceServers.every((server: IceServerConfig) => Array.isArray(server?.urls))
+  )
+}
 
 /**
- * STUN reicht für die meisten Heim- und WLAN-Netze. Hinter symmetrischem NAT
- * (häufig im Mobilfunk und in Firmennetzen) kommt eine direkte Verbindung nur
- * über ein TURN-Relay zustande.
+ * Holt die ICE-Server beim Server statt sie in das Bundle zu backen. So
+ * bleiben TURN-Zugangsdaten Server-Geheimnisse, lassen sich ohne Neubau
+ * wechseln und dürfen kurzlebig sein.
  */
-export function getIceServers(): RTCIceServer[] {
-  const stunUrls = list(import.meta.env.VITE_STUN_URLS)
-  const servers: RTCIceServer[] = [
-    { urls: stunUrls.length > 0 ? stunUrls : DEFAULT_STUN },
-  ]
-
-  if (TURN_URLS.length > 0) {
-    servers.push({
-      urls: TURN_URLS,
-      username: TURN_USERNAME,
-      credential: TURN_CREDENTIAL,
+export async function fetchIceConfig(): Promise<IceConfig> {
+  try {
+    const response = await fetch(iceEndpoint(), {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     })
-  }
+    if (!response.ok) throw new Error(`Server antwortete mit ${response.status}`)
 
-  return servers
+    const payload: unknown = await response.json()
+    if (!isIceConfig(payload)) throw new Error('Unerwartete Antwortform')
+
+    return payload
+  } catch (error) {
+    console.warn('[walky] ICE-Konfiguration nicht abrufbar, nur STUN:', error)
+    return FALLBACK_ICE
+  }
 }

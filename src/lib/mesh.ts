@@ -4,7 +4,6 @@ import type { PeerId, PeerStatus } from '../types'
 
 export interface MeshOptions {
   selfId: PeerId
-  iceServers: RTCIceServer[]
   callbacks: PeerCallbacks
 }
 
@@ -16,15 +15,22 @@ export interface MeshOptions {
  */
 export class Mesh {
   private readonly selfId: PeerId
-  private readonly iceServers: RTCIceServer[]
   private readonly callbacks: PeerCallbacks
+  private iceServers: RTCIceServer[] = []
   private readonly peers = new Map<PeerId, Peer>()
   private localStream: MediaStream | null = null
 
-  constructor({ selfId, iceServers, callbacks }: MeshOptions) {
+  constructor({ selfId, callbacks }: MeshOptions) {
     this.selfId = selfId
-    this.iceServers = iceServers
     this.callbacks = callbacks
+  }
+
+  /**
+   * Wird gesetzt, bevor der erste Peer entsteht — die Angaben holt die
+   * Sitzung beim Server, nicht aus dem Bundle.
+   */
+  setIceServers(iceServers: RTCIceServer[]): void {
+    this.iceServers = iceServers
   }
 
   /**

@@ -1,7 +1,7 @@
 import { Mesh } from './mesh'
 import { MicrophoneError, requestMicrophone } from './microphone'
 import { Signaling } from './signaling'
-import { getIceServers } from './env'
+import { fetchIceConfig } from './env'
 import type { PeerInfo } from '../../shared/protocol'
 import type {
   MicErrorCode,
@@ -69,6 +69,7 @@ export class ChannelSession {
   private signalingStatus: SignalingStatus = 'idle'
   private signalingError: SignalingErrorCode | null = null
   private selfTalking = false
+  private hasTurn = false
   private playbackBlocked = false
   private talkGuard: ReturnType<typeof setTimeout> | null = null
   private stopped = false
@@ -81,7 +82,6 @@ export class ChannelSession {
 
     this.mesh = new Mesh({
       selfId,
-      iceServers: getIceServers(),
       callbacks: {
         sendDescription: (to, description) => this.signaling.sendDescription(to, description),
         sendCandidate: (to, candidate) => this.signaling.sendCandidate(to, candidate),
@@ -153,8 +153,14 @@ export class ChannelSession {
    */
   async start(): Promise<void> {
     if (this.stopped) return
-    await this.acquireMicrophone()
+
+    // Mikrofon zuerst, solange die Nutzergeste noch zählt; die ICE-Server
+    // holen wir parallel dazu.
+    const [, ice] = await Promise.all([this.acquireMicrophone(), fetchIceConfig()])
     if (this.stopped) return
+
+    this.mesh.setIceServers(ice.iceServers)
+    this.hasTurn = ice.hasTurn
     this.signaling.start()
   }
 
@@ -414,6 +420,7 @@ export class ChannelSession {
       micError: this.micError,
       selfTalking: this.selfTalking,
       participants: [self, ...others],
+      hasTurn: this.hasTurn,
       playbackBlocked: this.playbackBlocked,
     }
   }

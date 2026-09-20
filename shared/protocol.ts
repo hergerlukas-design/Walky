@@ -37,6 +37,26 @@ export interface IceCandidate {
   usernameFragment?: string | null
 }
 
+/** Ein Eintrag für `RTCPeerConnection`s `iceServers`. */
+export interface IceServerConfig {
+  urls: string[]
+  username?: string
+  credential?: string
+}
+
+/**
+ * Was der Server unter `/api/ice` ausliefert. Zur Laufzeit geholt statt in
+ * das Bundle gebacken: Zugangsdaten bleiben Server-Geheimnisse, lassen sich
+ * ohne Neubau wechseln und dürfen kurzlebig sein.
+ */
+export interface IceConfig {
+  iceServers: IceServerConfig[]
+  /** Ohne Relay scheitert die Verbindung zwischen manchen Netzen. */
+  hasTurn: boolean
+}
+
+export const ICE_PATH = '/api/ice'
+
 export interface PeerInfo {
   peerId: PeerId
   name: string

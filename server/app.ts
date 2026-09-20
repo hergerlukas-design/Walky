@@ -7,6 +7,7 @@ import sirv from 'sirv'
 import { WebSocketServer, type WebSocket } from 'ws'
 import {
   HEARTBEAT_INTERVAL_MS,
+  ICE_PATH,
   MAX_MESSAGE_BYTES,
   WS_PATH_PREFIX,
   isClientMessage,
@@ -15,11 +16,14 @@ import {
 } from '../shared/protocol.js'
 import { isValidChannelCode, normalizeChannelCode } from '../shared/channelCode.js'
 import { ChannelRegistry, type Connection } from './channels.js'
+import { IceProvider, type IceProviderEnv } from './ice.js'
 
 export interface WalkyServerOptions {
   /** Verzeichnis mit dem Vite-Build. Fehlt es, läuft nur das Signaling. */
   clientDir?: string
   heartbeatIntervalMs?: number
+  /** Quelle der TURN-Zugangsdaten; ohne Angabe nur STUN. */
+  iceEnv?: IceProviderEnv
 }
 
 export interface WalkyServer {
@@ -74,8 +78,9 @@ export function parseJoinRequest(url: string): JoinRequest | null {
  * kein zweites Deployment, und die App findet ihren Server ohne Konfiguration.
  */
 export function createWalkyServer(options: WalkyServerOptions = {}): WalkyServer {
-  const { clientDir, heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS } = options
+  const { clientDir, heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS, iceEnv = {} } = options
   const registry = new ChannelRegistry()
+  const ice = new IceProvider(iceEnv)
   const hasClientBuild = Boolean(clientDir && existsSync(resolve(clientDir, 'index.html')))
 
   const serveStatic =
@@ -99,6 +104,25 @@ export function createWalkyServer(options: WalkyServerOptions = {}): WalkyServer
       : null
 
   const httpServer = createHttpServer((req: IncomingMessage, res: ServerResponse) => {
+    if (req.url === ICE_PATH) {
+      // Zugangsdaten sind kurzlebig und gelten pro Abruf — nichts davon darf
+      // in einem Zwischenspeicher hängen bleiben.
+      void ice
+        .get()
+        .then((config) => {
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+          })
+          res.end(JSON.stringify(config))
+        })
+        .catch(() => {
+          res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+          res.end(JSON.stringify({ error: 'ice_unavailable' }))
+        })
+      return
+    }
+
     if (req.url === '/healthz') {
       res.writeHead(200, {
         'Content-Type': 'application/json',

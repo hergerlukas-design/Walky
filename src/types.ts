@@ -73,6 +73,8 @@ export interface SessionSnapshot {
   micError: MicErrorCode | null
   selfTalking: boolean
   participants: Participant[]
+  /** Ein TURN-Relay steht bereit — sonst scheitert die Verbindung zwischen manchen Netzen. */
+  hasTurn: boolean
   /** Tonausgabe wurde vom Browser blockiert — braucht eine Nutzergeste. */
   playbackBlocked: boolean
 }
