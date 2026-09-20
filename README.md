@@ -344,6 +344,12 @@ Zwei Eigenheiten von Chrome auf Android bestimmen dabei die Umsetzung:
 - **`playbackState` bleibt durchgehend `playing`.** Ein pausierter Zustand
   riskiert, dass Android die Benachrichtigung einklappt oder verwirft — dann
   käme man über den Sperrbildschirm nicht mehr ans Senden.
+- **Die Positionsangabe wird gelöscht**, sonst zeichnet Android einen
+  Fortschrittsbalken über die zehn Sekunden der Schleife. Der gehört zu einem
+  Musikstück, nicht zu einem offenen Funkkanal.
+- **Die Schleife nimmt sich selbst wieder auf**, wenn sie jemand anhält —
+  begrenzt auf zehn Versuche, damit sie sich bei einem eingehenden Anruf nicht
+  mit dem System um den Ton streitet.
 
 Weil das Symbol damit immer dasselbe ist, schalten `play` und `pause` beide
 um; nur `stop` beendet ausdrücklich. Ob gerade gesendet wird, steht im Text

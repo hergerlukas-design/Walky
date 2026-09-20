@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useChannelSession } from '../hooks/useChannelSession'
+import { useKeepAliveAudio } from '../hooks/useKeepAliveAudio'
 import { useMediaSession } from '../hooks/useMediaSession'
 import { useOnline } from '../hooks/useOnline'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useTranslations } from '../i18n'
 import type { SignalingStatus } from '../types'
-import { KeepAliveAudio } from './KeepAliveAudio'
 import { LanguageToggle } from './LanguageToggle'
 import { ParticipantList } from './ParticipantList'
 import { PushToTalkButton } from './PushToTalkButton'
@@ -28,6 +28,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   // Erhöht sich bei jedem "Ton an" und stößt damit ein neues play() an.
   const [unlockToken, setUnlockToken] = useState(0)
   useWakeLock(true)
+  const { ensurePlaying } = useKeepAliveAudio(true)
 
   const {
     participants,
@@ -74,6 +75,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
     album: t.lockScreen.listeners(participants.length),
     talking: snapshot.selfTalking,
     onTalkingChange: setTalking,
+    ensurePlaying,
   })
 
   return (
@@ -152,8 +154,6 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
       </div>
 
       <ParticipantList participants={participants} onToggleMute={setMuted} />
-
-      <KeepAliveAudio />
 
       {remotes.map((participant) => (
         <RemoteAudio

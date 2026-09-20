@@ -9,6 +9,8 @@ export interface MediaSessionOptions {
   /** Läuft gerade eine eigene Übertragung? */
   talking: boolean
   onTalkingChange(talking: boolean): void
+  /** Hält die stille Schleife am Laufen, falls eine Taste sie pausiert hat. */
+  ensurePlaying(): void
 }
 
 /**
@@ -36,6 +38,7 @@ export function useMediaSession({
   album,
   talking,
   onTalkingChange,
+  ensurePlaying,
 }: MediaSessionOptions): void {
   useEffect(() => {
     if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return
@@ -49,6 +52,15 @@ export function useMediaSession({
         { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
       ],
     })
+
+    // Ohne Positionsangabe zeichnet Android keinen Fortschrittsbalken. Der
+    // gehörte zu einem Musikstück, nicht zu einem offenen Funkkanal — und er
+    // lud dazu ein, in einer Datei zu spulen, die niemand hören soll.
+    try {
+      navigator.mediaSession.setPositionState?.()
+    } catch {
+      /* nicht überall vorhanden */
+    }
   }, [album, artist, title])
 
   useEffect(() => {
@@ -72,12 +84,21 @@ export function useMediaSession({
     // Ein Knopf, zwei Zustände: Beide Tasten schalten um. Welches Symbol die
     // Plattform gerade zeichnet, ist damit gleichgültig — es tut immer das
     // Erwartete. Nur "stop" beendet ausdrücklich.
-    const toggle = () => onTalkingChange(!talking)
+    const toggle = () => {
+      onTalkingChange(!talking)
+      // Android pausiert bei "pause" mitunter auch das Element selbst. Ohne
+      // laufende Wiedergabe verschwindet die Benachrichtigung — und mit ihr
+      // die einzige Möglichkeit, die Übertragung wieder zu beenden.
+      ensurePlaying()
+    }
 
     const handlers: [string, MediaSessionActionHandler][] = [
       ['play', toggle],
       ['pause', toggle],
-      ['stop', () => onTalkingChange(false)],
+      ['stop', () => {
+        onTalkingChange(false)
+        ensurePlaying()
+      }],
       ['togglemicrophone', toggle],
     ]
 
@@ -99,7 +120,7 @@ export function useMediaSession({
         }
       }
     }
-  }, [onTalkingChange, talking])
+  }, [ensurePlaying, onTalkingChange, talking])
 
   useEffect(() => {
     return () => {
