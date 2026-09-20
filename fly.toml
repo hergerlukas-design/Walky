@@ -1,0 +1,39 @@
+# Fly.io-Deployment. Ein Prozess liefert die PWA aus und betreibt das
+# Signaling — deshalb genügt eine App und ein Zertifikat.
+app = 'walky'
+primary_region = 'fra'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  # WICHTIG: Die Kanalzuordnung liegt im Arbeitsspeicher. Mit mehr als einer
+  # Maschine landen zwei Geräte desselben Kanals womöglich auf
+  # unterschiedlichen Instanzen und finden sich nie. Für mehr Instanzen
+  # braucht es geteilten Zustand (z. B. Redis Pub/Sub) oder Sticky Routing
+  # auf den Kanal-Code.
+  min_machines_running = 0
+  max_machines_running = 1
+
+  [http_service.concurrency]
+    # Jeder Teilnehmer hält genau eine WebSocket-Verbindung offen.
+    type = 'connections'
+    soft_limit = 200
+    hard_limit = 400
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  # Der Server reicht nur kleine JSON-Nachrichten weiter; Sprache läuft P2P
+  # und belastet ihn nicht.
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1

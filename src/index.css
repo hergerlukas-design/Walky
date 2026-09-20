@@ -1,0 +1,102 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-shell-950: #070a0e;
+  --color-shell-900: #0b0f14;
+  --color-shell-800: #131a22;
+  --color-shell-700: #1c2631;
+  --color-shell-600: #2a3745;
+  --color-shell-400: #7d8fa3;
+  --color-shell-200: #c7d3df;
+
+  --color-signal-400: #ffc53d;
+  --color-signal-500: #f5a524;
+  --color-signal-600: #d98613;
+
+  --color-live-400: #35d07f;
+  --color-live-500: #1fb865;
+
+  --color-alert-400: #ff6b6b;
+  --color-alert-500: #e03131;
+
+  --font-display: 'DM Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-shell-950);
+    /* Overscroll-Wippen lenkt bei einem Halte-Button nur ab. */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-shell-950);
+    color: var(--color-shell-200);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* Kein blauer Blitz beim Antippen der Sprechtaste. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal-400);
+    outline-offset: 2px;
+  }
+}
+
+@utility safe-bottom {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+@utility safe-top {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+/* Der Ring um die Sprechtaste, solange gesendet wird. */
+@keyframes walky-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@utility animate-ptt-pulse {
+  animation: walky-pulse 1.4s ease-out infinite;
+}
+
+@keyframes walky-bars {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@utility animate-bars {
+  animation: walky-bars 0.7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
