@@ -65,6 +65,19 @@ jobs:
           VITE_TURN_CREDENTIAL: ${{ secrets.VITE_TURN_CREDENTIAL }}
           VITE_STUN_URLS: ${{ secrets.VITE_STUN_URLS }}
 
+      - name: Öffentliche IP-Adressen sicherstellen
+        # Fly vergibt sie erst beim ersten erfolgreichen Deploy. Scheitert der
+        # (hier: Maschinen-Limit der Organisation), bleibt die App ohne IP und
+        # <app>.fly.dev löst nicht auf. Beide Adressarten sind kostenlos:
+        # IPv4 nur geteilt, IPv6 ohnehin. Sind sie schon da, meldet flyctl
+        # einen Fehler — deshalb toleriert.
+        run: |
+          flyctl ips allocate-v4 --shared || true
+          flyctl ips allocate-v6 || true
+          flyctl ips list
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Auf eine Instanz begrenzen
         # Die Kanalzuordnung liegt im Arbeitsspeicher: zwei Maschinen würden
         # Teilnehmer desselben Kanals trennen, ohne dass es jemand merkt.
