@@ -156,13 +156,22 @@ Cloudflare Calls, Twilio, Metered; selbst gehostet: coturn.
 
 ## Deployment (Fly.io)
 
+Ein Container liefert die PWA aus und betreibt das Signaling — also eine App,
+ein Zertifikat, kein CORS.
+
+**Automatisch:** Jeder Push auf `main` deployt, sobald Typen, Lint, Tests und
+Build durch sind (`.github/workflows/ci.yml`). Voraussetzung ist das
+Repository-Secret `FLY_API_TOKEN` aus `fly tokens create deploy`.
+
+**Von Hand:**
+
 ```bash
-fly launch --no-deploy     # nur beim ersten Mal, fly.toml liegt schon bei
 fly deploy
 ```
 
-Ein Container liefert die PWA aus und betreibt das Signaling — also eine App,
-ein Zertifikat, kein CORS. Mit TURN:
+TURN-Zugangsdaten hinterlegt man als Repository-Secrets (`VITE_TURN_URLS`,
+`VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`), der Workflow reicht sie als
+Build-Args durch. Von Hand entsprechend:
 
 ```bash
 fly deploy \
@@ -173,11 +182,24 @@ fly deploy \
 
 > **Eine Instanz.** Die Kanalzuordnung liegt im Arbeitsspeicher. Mit zwei
 > Maschinen landen zwei Geräte desselben Kanals womöglich auf
-> unterschiedlichen Instanzen und finden sich nie. `fly.toml` begrenzt
-> deshalb auf `max_machines_running = 1`. Für mehr braucht es geteilten
-> Zustand (Redis Pub/Sub) oder Routing nach Kanal-Code.
+> unterschiedlichen Instanzen und finden sich nie — ein Fehlerbild, das beim
+> Test zu zweit nicht auffällt und später sporadisch auftritt.
+>
+> `max_machines_running = 1` in `fly.toml` begrenzt allerdings nur das
+> automatische Hochfahren, nicht die Zahl vorhandener Maschinen — und
+> `fly launch` legt standardmäßig zwei an. Maßgeblich ist deshalb:
+>
+> ```bash
+> fly status          # wie viele Maschinen laufen?
+> fly scale count 1
+> ```
+>
+> Der Deploy-Workflow führt `fly scale count 1` nach jedem Deploy aus. Für
+> echte Skalierung braucht es geteilten Zustand (Redis Pub/Sub) oder Routing
+> nach Kanal-Code.
 
-`GET /healthz` liefert Status und die Zahl offener Kanäle und Teilnehmer.
+`GET /healthz` liefert Status und die Zahl offener Kanäle und Teilnehmer; der
+Workflow prüft die Antwort nach jedem Deploy.
 
 ## Was geprüft ist
 

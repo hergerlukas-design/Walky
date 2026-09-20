@@ -29,3 +29,61 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  deploy:
+    name: Deploy nach Fly.io
+    # Erst wenn Typen, Lint, Tests und Build durch sind.
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Zwei gleichzeitige Deploys würden sich gegenseitig überholen.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deployen
+        # Vite backt VITE_*-Variablen fest in das Bundle ein, sie müssen
+        # deshalb zur Buildzeit anliegen. Nicht gesetzte Secrets kommen als
+        # leerer String an — genau die Vorgabe aus dem Dockerfile.
+        run: |
+          flyctl deploy --remote-only \
+            --build-arg VITE_TURN_URLS="$VITE_TURN_URLS" \
+            --build-arg VITE_TURN_USERNAME="$VITE_TURN_USERNAME" \
+            --build-arg VITE_TURN_CREDENTIAL="$VITE_TURN_CREDENTIAL" \
+            --build-arg VITE_STUN_URLS="$VITE_STUN_URLS"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VITE_TURN_URLS: ${{ secrets.VITE_TURN_URLS }}
+          VITE_TURN_USERNAME: ${{ secrets.VITE_TURN_USERNAME }}
+          VITE_TURN_CREDENTIAL: ${{ secrets.VITE_TURN_CREDENTIAL }}
+          VITE_STUN_URLS: ${{ secrets.VITE_STUN_URLS }}
+
+      - name: Auf eine Instanz begrenzen
+        # Die Kanalzuordnung liegt im Arbeitsspeicher: zwei Maschinen würden
+        # Teilnehmer desselben Kanals trennen, ohne dass es jemand merkt.
+        # fly launch legt standardmäßig zwei an, deshalb bei jedem Deploy.
+        run: flyctl scale count 1 --yes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Erreichbarkeit prüfen
+        # Die Maschine braucht nach dem Deploy einen Moment.
+        run: |
+          for versuch in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 10 https://walky-votoiw.fly.dev/healthz; then
+              echo
+              echo "Deployment erreichbar."
+              exit 0
+            fi
+            echo "Versuch $versuch fehlgeschlagen, neuer Anlauf in 10 s…"
+            sleep 10
+          done
+          echo "Anwendung antwortet nach dem Deploy nicht auf /healthz."
+          exit 1
