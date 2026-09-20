@@ -336,13 +336,22 @@ Gründe: Chrome blendet den Medieneintrag auf dem Sperrbildschirm nur bei
 tatsächlich laufender Wiedergabe ein, und eine Seite, die Ton ausgibt oder
 aufnimmt, wird im Hintergrund nicht eingefroren.
 
-Darauf sitzt die Sprechtaste für Sperrbildschirm und Headset. `play` startet
-die Übertragung, `pause` und `stop` beenden sie; zusätzlich registriert die
-App Chromes Konferenz-Aktion `togglemicrophone` und meldet den Zustand über
-`setMicrophoneActive`, falls die Plattform dafür einen eigenen Knopf zeichnet.
-`playbackState` folgt der Übertragung, damit die Taste das passende Symbol
-zeigt. Stummschalten bleibt bewusst in der App — ein Knopf kann nur eine
-Sache tun, und für ein Funkgerät ist Sprechen die wichtigere.
+Zwei Eigenheiten von Chrome auf Android bestimmen dabei die Umsetzung:
+
+- **Die Schleife ist zehn Sekunden lang, nicht eine.** Chrome fordert den
+  Audio-Fokus erst ab fünf Sekunden Spieldauer an, und ohne Audio-Fokus
+  erscheint überhaupt keine Medienbenachrichtigung.
+- **`playbackState` bleibt durchgehend `playing`.** Ein pausierter Zustand
+  riskiert, dass Android die Benachrichtigung einklappt oder verwirft — dann
+  käme man über den Sperrbildschirm nicht mehr ans Senden.
+
+Weil das Symbol damit immer dasselbe ist, schalten `play` und `pause` beide
+um; nur `stop` beendet ausdrücklich. Ob gerade gesendet wird, steht im Text
+der Benachrichtigung. Dazu registriert die App Chromes Konferenz-Aktion
+`togglemicrophone` und meldet den Zustand über `setMicrophoneActive`, falls
+die Plattform einen eigenen Mikrofonknopf zeichnet. Stummschalten bleibt
+bewusst in der App — ein Knopf kann nur eine Sache tun, und für ein Funkgerät
+ist Sprechen die wichtigere.
 
 Was damit geht und was nicht:
 

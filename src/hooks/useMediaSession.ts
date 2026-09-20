@@ -55,9 +55,11 @@ export function useMediaSession({
     if (!('mediaSession' in navigator)) return
     const session = navigator.mediaSession
 
-    // Der Zustand steuert, welches Symbol die Taste zeigt: Läuft eine
-    // Übertragung, gehört dorthin ein Stopp-Symbol, sonst eines zum Starten.
-    session.playbackState = talking ? 'playing' : 'paused'
+    // Durchgehend "playing", solange man im Kanal ist. Ein pausierter
+    // Zustand riskiert, dass Android die Benachrichtigung einklappt oder
+    // verwirft — und dann käme man über den Sperrbildschirm gar nicht mehr
+    // ans Senden. Welchen Zustand die Übertragung hat, steht im Text.
+    session.playbackState = 'playing'
 
     // Chrome kennt seit Fassung 91 eigene Konferenz-Aktionen. Wo sie
     // dargestellt werden, ist das der passendere Knopf; wo nicht, bleibt
@@ -67,11 +69,16 @@ export function useMediaSession({
     ).setMicrophoneActive?.bind(session)
     setMicrophoneActive?.(talking)
 
+    // Ein Knopf, zwei Zustände: Beide Tasten schalten um. Welches Symbol die
+    // Plattform gerade zeichnet, ist damit gleichgültig — es tut immer das
+    // Erwartete. Nur "stop" beendet ausdrücklich.
+    const toggle = () => onTalkingChange(!talking)
+
     const handlers: [string, MediaSessionActionHandler][] = [
-      ['play', () => onTalkingChange(true)],
-      ['pause', () => onTalkingChange(false)],
+      ['play', toggle],
+      ['pause', toggle],
       ['stop', () => onTalkingChange(false)],
-      ['togglemicrophone', () => onTalkingChange(!talking)],
+      ['togglemicrophone', toggle],
     ]
 
     for (const [action, handler] of handlers) {
