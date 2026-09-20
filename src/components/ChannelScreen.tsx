@@ -35,8 +35,12 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
     [participants],
   )
 
-  const anyFailed = participants.some(
-    (participant) => !participant.isSelf && participant.status === 'failed',
+  // `failed` meldet der Browser erst nach rund 30 Sekunden. Ein Peer, der
+  // nach der Frist immer noch nicht steht, ist praktisch derselbe Fall — und
+  // ohne Hinweis säße man vor einem endlosen "verbindet…".
+  const mediaStuck = participants.some(
+    (participant) =>
+      !participant.isSelf && (participant.status === 'failed' || participant.stalled),
   )
 
   const onBlocked = useCallback(
@@ -102,8 +106,12 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
           </StatusBanner>
         )}
 
-        {anyFailed && !hasTurnServer && (
-          <StatusBanner tone="warn">{t.channel.noDirectConnection}</StatusBanner>
+        {mediaStuck && (
+          <StatusBanner tone="warn">
+            {hasTurnServer
+              ? t.channel.noDirectConnectionWithTurn
+              : t.channel.noDirectConnectionNoTurn}
+          </StatusBanner>
         )}
       </div>
 

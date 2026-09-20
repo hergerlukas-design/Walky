@@ -42,7 +42,9 @@ export function RemoteAudio({ stream, muted, retryToken, onBlocked }: RemoteAudi
     if (ref.current) ref.current.muted = muted
   }, [muted])
 
-  // Live-Sprachfunk: es gibt nichts zu untertiteln, das Element ist reine
-  // Wiedergabe ohne sichtbare Steuerung.
-  return <audio ref={ref} autoPlay playsInline className="hidden" />
+  // Ohne `controls` stellt ein Audio-Element ohnehin nichts dar — es braucht
+  // kein display:none. Umgekehrt ist das sogar schädlich: Safari auf iOS
+  // verweigert ausgeblendeten Medienelementen die Wiedergabe.
+  // Live-Sprachfunk, deshalb auch keine Untertitelspur.
+  return <audio ref={ref} autoPlay playsInline />
 }

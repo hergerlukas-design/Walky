@@ -53,7 +53,7 @@ function ParticipantRow({
   onToggleMute(peerId: string, muted: boolean): void
 }) {
   const t = useTranslations()
-  const { isSelf, talking, status, muted, name } = participant
+  const { isSelf, talking, status, stalled, muted, name } = participant
 
   return (
     <li
@@ -91,10 +91,16 @@ function ParticipantRow({
           ) : (
             <>
               <span
-                className={`h-1.5 w-1.5 rounded-full ${STATUS_TONE[status]}`}
+                className={`h-1.5 w-1.5 rounded-full ${stalled ? 'bg-alert-400' : STATUS_TONE[status]}`}
                 aria-hidden="true"
               />
-              {isSelf ? t.participants.ready : t.participants.status[status]}
+              <span className={stalled ? 'text-alert-400' : undefined}>
+                {isSelf
+                  ? t.participants.ready
+                  : stalled
+                    ? t.participants.stalled
+                    : t.participants.status[status]}
+              </span>
             </>
           )}
         </span>

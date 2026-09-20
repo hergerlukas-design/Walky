@@ -50,6 +50,12 @@ export interface Participant {
   joinedAt: number
   isSelf: boolean
   status: PeerStatus
+  /**
+   * Die Medienverbindung steht nach einer großzügigen Frist immer noch nicht.
+   * `failed` meldet der Browser erst nach etwa 30 Sekunden — bis dahin sähe
+   * man nur ein endloses "verbindet…".
+   */
+  stalled: boolean
   talking: boolean
   /** Lokal stummgeschaltet — betrifft nur die eigene Wiedergabe. */
   muted: boolean

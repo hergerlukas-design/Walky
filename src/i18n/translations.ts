@@ -73,8 +73,10 @@ const de = {
     playbackBlocked:
       'Der Browser hat die Wiedergabe blockiert. Einmal tippen, dann ist der Ton frei.',
     playbackUnlock: 'Ton an',
-    noDirectConnection:
-      'Zu mindestens einem Gerät kommt keine direkte Verbindung zustande. Das passiert in Mobilfunk- und Firmennetzen — dafür braucht es einen TURN-Server.',
+    noDirectConnectionNoTurn:
+      'Zu mindestens einem Gerät kommt keine Sprachverbindung zustande. In Mobilfunk- und Firmennetzen geht das nur über ein TURN-Relay — es ist keines eingerichtet.',
+    noDirectConnectionWithTurn:
+      'Zu mindestens einem Gerät kommt keine Sprachverbindung zustande, obwohl ein TURN-Relay eingerichtet ist. Zugangsdaten und Erreichbarkeit des Relays prüfen.',
   },
 
   ptt: {
@@ -107,6 +109,7 @@ const de = {
       failed: 'keine Verbindung',
       closed: 'getrennt',
     } satisfies Record<PeerStatus, string>,
+    stalled: 'kein Ton — Verbindung kommt nicht zustande',
   },
 
   update: {
@@ -197,8 +200,10 @@ const en: Translations = {
     micRetry: 'Try again',
     playbackBlocked: 'Your browser blocked playback. One tap and the sound is through.',
     playbackUnlock: 'Enable sound',
-    noDirectConnection:
-      'No direct connection to at least one device. That happens on mobile and corporate networks — it needs a TURN server.',
+    noDirectConnectionNoTurn:
+      'No voice connection to at least one device. On mobile and corporate networks that only works through a TURN relay — none is set up.',
+    noDirectConnectionWithTurn:
+      'No voice connection to at least one device even though a TURN relay is set up. Check the relay credentials and whether it is reachable.',
   },
 
   ptt: {
@@ -231,6 +236,7 @@ const en: Translations = {
       failed: 'no connection',
       closed: 'disconnected',
     },
+    stalled: 'no audio — connection not coming up',
   },
 
   update: {

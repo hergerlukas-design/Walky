@@ -20,6 +20,13 @@ const MAX_TALK_MS = 60_000
 /** Sprecher-Anzeige zurücksetzen, falls das "Ende"-Signal verloren geht. */
 const REMOTE_TALK_TIMEOUT_MS = 65_000
 
+/**
+ * So lange darf ein Verbindungsaufbau dauern, bevor die Oberfläche ihn als
+ * hängend meldet. Im selben WLAN steht die Verbindung in unter zwei Sekunden;
+ * bis der Browser von sich aus `failed` meldet, vergehen rund 30.
+ */
+const MEDIA_STALLED_AFTER_MS = 12_000
+
 export interface ChannelSessionOptions {
   code: string
   selfId: PeerId
@@ -33,6 +40,8 @@ interface PeerRecord {
   talking: boolean
   muted: boolean
   talkTimer: ReturnType<typeof setTimeout> | null
+  stalled: boolean
+  stalledTimer: ReturnType<typeof setTimeout> | null
 }
 
 /**
@@ -89,8 +98,14 @@ export class ChannelSession {
           const record = this.peers.get(peerId)
           if (!record) return
           record.status = status
+
+          if (status === 'connected') {
+            record.stalled = false
+            this.clearStalledTimer(record)
+          }
           if (status === 'closed' || status === 'failed') {
             this.setRemoteTalking(peerId, false)
+            this.clearStalledTimer(record)
           }
           this.publish()
         },
@@ -201,6 +216,7 @@ export class ChannelSession {
 
     for (const record of this.peers.values()) {
       if (record.talkTimer) clearTimeout(record.talkTimer)
+      this.clearStalledTimer(record)
     }
     this.peers.clear()
     this.pendingStreams.clear()
@@ -268,14 +284,25 @@ export class ChannelSession {
       if (existing) {
         existing.info = info
       } else {
-        this.peers.set(info.peerId, {
+        const record: PeerRecord = {
           info,
           status: this.mesh.getStatus(info.peerId),
           stream: this.pendingStreams.get(info.peerId) ?? null,
           talking: false,
           muted: false,
           talkTimer: null,
-        })
+          stalled: false,
+          stalledTimer: null,
+        }
+        record.stalledTimer = setTimeout(() => {
+          record.stalledTimer = null
+          if (record.status !== 'connected') {
+            record.stalled = true
+            this.publish()
+          }
+        }, MEDIA_STALLED_AFTER_MS)
+
+        this.peers.set(info.peerId, record)
         this.pendingStreams.delete(info.peerId)
       }
     }
@@ -283,6 +310,7 @@ export class ChannelSession {
     for (const [peerId, record] of this.peers) {
       if (!seen.has(peerId)) {
         if (record.talkTimer) clearTimeout(record.talkTimer)
+        this.clearStalledTimer(record)
         this.peers.delete(peerId)
         this.pendingStreams.delete(peerId)
       }
@@ -309,6 +337,13 @@ export class ChannelSession {
       }, REMOTE_TALK_TIMEOUT_MS)
     }
     this.publish()
+  }
+
+  private clearStalledTimer(record: PeerRecord): void {
+    if (record.stalledTimer) {
+      clearTimeout(record.stalledTimer)
+      record.stalledTimer = null
+    }
   }
 
   setMuted(peerId: PeerId, muted: boolean): void {
@@ -349,6 +384,7 @@ export class ChannelSession {
       joinedAt: this.joinedAt,
       isSelf: true,
       status: this.signalingStatus === 'connected' ? 'connected' : 'connecting',
+      stalled: false,
       talking: this.selfTalking,
       muted: false,
       stream: null,
@@ -361,6 +397,7 @@ export class ChannelSession {
         joinedAt: record.info.joinedAt,
         isSelf: false,
         status: record.status,
+        stalled: record.stalled,
         talking: record.talking,
         muted: record.muted,
         stream: record.stream,
