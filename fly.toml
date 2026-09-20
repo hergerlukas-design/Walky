@@ -1,6 +1,9 @@
-# Fly.io-Deployment. Ein Prozess liefert die PWA aus und betreibt das
-# Signaling — deshalb genügt eine App und ein Zertifikat.
-app = 'walky'
+# fly.toml app configuration file generated for walky-votoiw on 2026-09-20T04:58:04Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'walky-votoiw'
 primary_region = 'fra'
 
 [build]
@@ -10,19 +13,12 @@ primary_region = 'fra'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  # WICHTIG: Die Kanalzuordnung liegt im Arbeitsspeicher. Mit mehr als einer
-  # Maschine landen zwei Geräte desselben Kanals womöglich auf
-  # unterschiedlichen Instanzen und finden sich nie. Für mehr Instanzen
-  # braucht es geteilten Zustand (z. B. Redis Pub/Sub) oder Sticky Routing
-  # auf den Kanal-Code.
   min_machines_running = 0
-  max_machines_running = 1
 
   [http_service.concurrency]
-    # Jeder Teilnehmer hält genau eine WebSocket-Verbindung offen.
     type = 'connections'
-    soft_limit = 200
     hard_limit = 400
+    soft_limit = 200
 
   [[http_service.checks]]
     interval = '30s'
@@ -32,8 +28,7 @@ primary_region = 'fra'
     path = '/healthz'
 
 [[vm]]
-  # Der Server reicht nur kleine JSON-Nachrichten weiter; Sprache läuft P2P
-  # und belastet ihn nicht.
   memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
