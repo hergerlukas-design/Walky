@@ -52,7 +52,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,wav}'],
         // Jede unbekannte Route auf die SPA-Shell mappen (/kanal/abc123).
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,

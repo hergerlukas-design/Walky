@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useChannelSession } from '../hooks/useChannelSession'
+import { useMediaSession } from '../hooks/useMediaSession'
 import { useOnline } from '../hooks/useOnline'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useTranslations } from '../i18n'
 import type { SignalingStatus } from '../types'
+import { KeepAliveAudio } from './KeepAliveAudio'
 import { LanguageToggle } from './LanguageToggle'
 import { ParticipantList } from './ParticipantList'
 import { PushToTalkButton } from './PushToTalkButton'
@@ -25,6 +27,8 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   const online = useOnline()
   // Erhöht sich bei jedem "Ton an" und stößt damit ein neues play() an.
   const [unlockToken, setUnlockToken] = useState(0)
+  // Über die Sperrbildschirm-Taste stummgeschaltet — gilt für alle Gegenstellen.
+  const [allMuted, setAllMuted] = useState(false)
   useWakeLock(true)
 
   const {
@@ -57,6 +61,22 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   )
 
   const micBroken = mic === 'denied' || mic === 'unavailable'
+
+  const speaker = participants.find(
+    (participant) => !participant.isSelf && participant.talking,
+  )
+
+  useMediaSession({
+    title: t.lockScreen.title(code),
+    artist: allMuted
+      ? t.lockScreen.muted
+      : speaker
+        ? t.lockScreen.speaking(speaker.name)
+        : t.lockScreen.idle,
+    album: t.lockScreen.listeners(participants.length),
+    muted: allMuted,
+    onMutedChange: setAllMuted,
+  })
 
   return (
     <main className="safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-5">
@@ -134,11 +154,13 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
 
       <ParticipantList participants={participants} onToggleMute={setMuted} />
 
+      <KeepAliveAudio />
+
       {remotes.map((participant) => (
         <RemoteAudio
           key={participant.peerId}
           stream={participant.stream as MediaStream}
-          muted={participant.muted}
+          muted={participant.muted || allMuted}
           retryToken={unlockToken}
           onBlocked={onBlocked}
         />

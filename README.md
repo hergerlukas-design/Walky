@@ -322,6 +322,33 @@ wegfallen, ist aber im Deployment noch zu bestätigen.
 - Einzelne Teilnehmer lassen sich lokal stummschalten.
 - Der Bildschirm bleibt im Kanal an (Wake Lock), damit die Sprechtaste
   erreichbar bleibt.
+- Auf dem Sperrbildschirm erscheint der Kanal als Medienwiedergabe — mit
+  Anzeige, wer gerade spricht, und einer Taste zum Stummschalten.
+
+## Im Hintergrund
+
+Solange man im Kanal ist, läuft eine stille Endlosschleife mit. Das hat zwei
+Gründe: Chrome blendet den Medieneintrag auf dem Sperrbildschirm nur bei
+tatsächlich laufender Wiedergabe ein, und eine Seite, die Ton ausgibt oder
+aufnimmt, wird im Hintergrund nicht eingefroren.
+
+Was damit geht und was nicht:
+
+| Lage                                   | Android                        | iOS            |
+| -------------------------------------- | ------------------------------ | -------------- |
+| App offen                              | ja                             | ja             |
+| minimiert, Bildschirm gesperrt         | ja, solange das System mitspielt | nein         |
+| App weggewischt                        | nein                           | nein           |
+
+Safari suspendiert im Hintergrund die Seite samt WebRTC; dagegen hilft kein
+Kniff, nur eine native App. Auf Android ist der begrenzende Faktor nicht der
+Browser, sondern die Akkuverwaltung des Herstellers — bei Xiaomi, Samsung und
+Huawei lohnt es sich, für den Browser „keine Einschränkungen" zu setzen und
+die App in der Übersicht anzupinnen.
+
+Die Verbindung selbst übersteht den Hintergrund besser als man denkt: Der
+Server pingt alle 25 Sekunden, und die Antwort darauf erledigt der Browser
+auf Protokollebene — sie hängt nicht an gedrosselten JavaScript-Timern.
 
 ## Grenzen und nächster Ausbau
 

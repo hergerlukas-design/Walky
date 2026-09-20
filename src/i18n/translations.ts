@@ -92,6 +92,14 @@ const de = {
       'Ein Relay ist eingerichtet und wurde ausgeliefert — prüfe, ob es von diesem Netz aus erreichbar ist.',
   },
 
+  lockScreen: {
+    title: (code: string) => `Kanal ${code}`,
+    idle: 'Bereit — niemand spricht',
+    speaking: (name: string) => `${name} spricht`,
+    muted: 'Stummgeschaltet',
+    listeners: (count: number) => `${count} im Kanal`,
+  },
+
   ptt: {
     idle: 'Sprechen',
     sending: 'Sendet',
@@ -225,6 +233,14 @@ const en: Translations = {
     },
     turnConfiguredButFailing:
       'A relay is set up and was handed out — check whether it is reachable from this network.',
+  },
+
+  lockScreen: {
+    title: (code: string) => `Channel ${code}`,
+    idle: 'Ready — nobody talking',
+    speaking: (name: string) => `${name} is talking`,
+    muted: 'Muted',
+    listeners: (count: number) => `${count} in channel`,
   },
 
   ptt: {

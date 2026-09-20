@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons": "node scripts/generate-icons.mjs",
+    "icons": "node scripts/generate-icons.mjs && node scripts/generate-silence.mjs",
     "watch:server": "tsc -p tsconfig.server.json --watch --preserveWatchOutput"
   },
   "dependencies": {
