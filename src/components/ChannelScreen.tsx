@@ -27,8 +27,6 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
   const online = useOnline()
   // Erhöht sich bei jedem "Ton an" und stößt damit ein neues play() an.
   const [unlockToken, setUnlockToken] = useState(0)
-  // Über die Sperrbildschirm-Taste stummgeschaltet — gilt für alle Gegenstellen.
-  const [allMuted, setAllMuted] = useState(false)
   useWakeLock(true)
 
   const {
@@ -68,14 +66,14 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
 
   useMediaSession({
     title: t.lockScreen.title(code),
-    artist: allMuted
-      ? t.lockScreen.muted
+    artist: snapshot.selfTalking
+      ? t.lockScreen.sending
       : speaker
         ? t.lockScreen.speaking(speaker.name)
         : t.lockScreen.idle,
     album: t.lockScreen.listeners(participants.length),
-    muted: allMuted,
-    onMutedChange: setAllMuted,
+    talking: snapshot.selfTalking,
+    onTalkingChange: setTalking,
   })
 
   return (
@@ -147,6 +145,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
       <div className="flex flex-1 items-center justify-center py-2">
         <PushToTalkButton
           onChange={setTalking}
+          active={snapshot.selfTalking}
           disabled={micBroken || signaling === 'error'}
           disabledHint={signaling === 'error' ? t.ptt.noChannel : t.ptt.noMic}
         />
@@ -160,7 +159,7 @@ export function ChannelScreen({ code, displayName, onLeave }: ChannelScreenProps
         <RemoteAudio
           key={participant.peerId}
           stream={participant.stream as MediaStream}
-          muted={participant.muted || allMuted}
+          muted={participant.muted}
           retryToken={unlockToken}
           onBlocked={onBlocked}
         />

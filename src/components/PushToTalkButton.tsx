@@ -4,6 +4,12 @@ import { MicIcon, MicOffIcon } from './Icons'
 
 interface PushToTalkButtonProps {
   onChange(talking: boolean): void
+  /**
+   * Ob tatsächlich gesendet wird. Kommt aus der Sitzung, nicht aus dem
+   * Knopf — sonst bliebe er blind, wenn die Übertragung über den
+   * Sperrbildschirm oder den Kopfhörerknopf gestartet wurde.
+   */
+  active: boolean
   disabled: boolean
   disabledHint?: string
 }
@@ -12,9 +18,15 @@ interface PushToTalkButtonProps {
  * Der eigentliche Funkknopf. Bewusst riesig und mit Pointer Capture: Der
  * Finger darf beim Sprechen verrutschen, ohne dass die Übertragung abbricht.
  */
-export function PushToTalkButton({ onChange, disabled, disabledHint }: PushToTalkButtonProps) {
+export function PushToTalkButton({
+  onChange,
+  active,
+  disabled,
+  disabledHint,
+}: PushToTalkButtonProps) {
   const t = useTranslations()
-  const { talking, locked, toggleLock, handlers } = usePushToTalk({ onChange, disabled })
+  const { locked, toggleLock, handlers } = usePushToTalk({ onChange, disabled })
+  const talking = active
 
   return (
     <div className="flex flex-col items-center gap-4">

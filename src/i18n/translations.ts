@@ -94,9 +94,9 @@ const de = {
 
   lockScreen: {
     title: (code: string) => `Kanal ${code}`,
-    idle: 'Bereit — niemand spricht',
+    idle: 'Tippen zum Sprechen',
     speaking: (name: string) => `${name} spricht`,
-    muted: 'Stummgeschaltet',
+    sending: 'Du sendest — tippen zum Beenden',
     listeners: (count: number) => `${count} im Kanal`,
   },
 
@@ -237,9 +237,9 @@ const en: Translations = {
 
   lockScreen: {
     title: (code: string) => `Channel ${code}`,
-    idle: 'Ready — nobody talking',
+    idle: 'Tap to talk',
     speaking: (name: string) => `${name} is talking`,
-    muted: 'Muted',
+    sending: 'You are transmitting — tap to stop',
     listeners: (count: number) => `${count} in channel`,
   },
 

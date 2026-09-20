@@ -322,8 +322,12 @@ wegfallen, ist aber im Deployment noch zu bestätigen.
 - Einzelne Teilnehmer lassen sich lokal stummschalten.
 - Der Bildschirm bleibt im Kanal an (Wake Lock), damit die Sprechtaste
   erreichbar bleibt.
-- Auf dem Sperrbildschirm erscheint der Kanal als Medienwiedergabe — mit
-  Anzeige, wer gerade spricht, und einer Taste zum Stummschalten.
+- Auf dem Sperrbildschirm erscheint der Kanal als Medienwiedergabe: Kanal,
+  Teilnehmerzahl und wer gerade spricht.
+- **Die Play/Pause-Taste sendet.** Das gilt für den Sperrbildschirm ebenso wie
+  für den Knopf an Kopfhörern und Bluetooth-Headsets — funken, ohne das
+  Telefon anzufassen. Halten geht dort nicht, es ist ein Umschalter; die
+  Sicherheitsabschaltung nach 60 Sekunden greift genauso.
 
 ## Im Hintergrund
 
@@ -331,6 +335,14 @@ Solange man im Kanal ist, läuft eine stille Endlosschleife mit. Das hat zwei
 Gründe: Chrome blendet den Medieneintrag auf dem Sperrbildschirm nur bei
 tatsächlich laufender Wiedergabe ein, und eine Seite, die Ton ausgibt oder
 aufnimmt, wird im Hintergrund nicht eingefroren.
+
+Darauf sitzt die Sprechtaste für Sperrbildschirm und Headset. `play` startet
+die Übertragung, `pause` und `stop` beenden sie; zusätzlich registriert die
+App Chromes Konferenz-Aktion `togglemicrophone` und meldet den Zustand über
+`setMicrophoneActive`, falls die Plattform dafür einen eigenen Knopf zeichnet.
+`playbackState` folgt der Übertragung, damit die Taste das passende Symbol
+zeigt. Stummschalten bleibt bewusst in der App — ein Knopf kann nur eine
+Sache tun, und für ein Funkgerät ist Sprechen die wichtigere.
 
 Was damit geht und was nicht:
 

@@ -3,21 +3,29 @@ import { useEffect } from 'react'
 export interface MediaSessionOptions {
   /** Titelzeile auf dem Sperrbildschirm, üblicherweise der Kanal. */
   title: string
-  /** Zweite Zeile: wer gerade spricht oder der Ruhezustand. */
+  /** Zweite Zeile: wer spricht, oder die Aufforderung zum Senden. */
   artist: string
   album: string
-  /** Sperrbildschirm-Taste: pausieren schaltet den Kanal stumm. */
-  muted: boolean
-  onMutedChange(muted: boolean): void
+  /** Läuft gerade eine eigene Übertragung? */
+  talking: boolean
+  onTalkingChange(talking: boolean): void
 }
 
 /**
- * Meldet die laufende Verbindung als Medienwiedergabe an.
+ * Meldet die laufende Verbindung als Medienwiedergabe an — und macht die
+ * Medientasten zur Sprechtaste.
  *
- * Das ist nicht bloß Kosmetik: Android behandelt eine Seite mit aktiver
- * Medien-Sitzung deutlich schonender, wenn sie in den Hintergrund gerät, und
- * man sieht auf dem Sperrbildschirm, dass der Kanal noch offen ist — samt
- * Taste, um ihn stummzuschalten, ohne das Gerät zu entsperren.
+ * Android behandelt eine Seite mit aktiver Medien-Sitzung im Hintergrund
+ * schonender, und man sieht auf dem Sperrbildschirm, dass der Kanal offen
+ * ist. Der eigentliche Gewinn hängt aber an der Play/Pause-Taste: Sie liegt
+ * nicht nur auf dem Sperrbildschirm, sondern auch auf dem Knopf von
+ * Kopfhörern und Headsets. Damit lässt sich funken, ohne das Telefon
+ * anzufassen.
+ *
+ * Halten geht dabei nicht — ein Knopf in einer Benachrichtigung kennt kein
+ * Gedrückthalten. Es ist deshalb ein Umschalter, wie der Freihändig-Modus in
+ * der App. Gegen die vergessene offene Leitung greift dieselbe
+ * Sicherheitsabschaltung nach 60 Sekunden.
  *
  * Voraussetzung ist eine tatsächlich laufende Wiedergabe; die liefert die
  * stille Endlosschleife in `KeepAliveAudio`.
@@ -26,11 +34,11 @@ export function useMediaSession({
   title,
   artist,
   album,
-  muted,
-  onMutedChange,
+  talking,
+  onTalkingChange,
 }: MediaSessionOptions): void {
   useEffect(() => {
-    if (!('mediaSession' in navigator)) return
+    if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
@@ -45,35 +53,46 @@ export function useMediaSession({
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
+    const session = navigator.mediaSession
 
-    // "Pausiert" heißt hier stummgeschaltet — die Verbindung bleibt stehen,
-    // sonst verschwände der Eintrag und man käme nicht mehr zurück.
-    navigator.mediaSession.playbackState = muted ? 'paused' : 'playing'
+    // Der Zustand steuert, welches Symbol die Taste zeigt: Läuft eine
+    // Übertragung, gehört dorthin ein Stopp-Symbol, sonst eines zum Starten.
+    session.playbackState = talking ? 'playing' : 'paused'
 
-    const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
-      ['play', () => onMutedChange(false)],
-      ['pause', () => onMutedChange(true)],
-      ['stop', () => onMutedChange(true)],
+    // Chrome kennt seit Fassung 91 eigene Konferenz-Aktionen. Wo sie
+    // dargestellt werden, ist das der passendere Knopf; wo nicht, bleibt
+    // Play/Pause — das kommt auch vom Kopfhörerknopf.
+    const setMicrophoneActive = (
+      session as MediaSession & { setMicrophoneActive?: (active: boolean) => void }
+    ).setMicrophoneActive?.bind(session)
+    setMicrophoneActive?.(talking)
+
+    const handlers: [string, MediaSessionActionHandler][] = [
+      ['play', () => onTalkingChange(true)],
+      ['pause', () => onTalkingChange(false)],
+      ['stop', () => onTalkingChange(false)],
+      ['togglemicrophone', () => onTalkingChange(!talking)],
     ]
 
     for (const [action, handler] of handlers) {
       try {
-        navigator.mediaSession.setActionHandler(action, handler)
+        session.setActionHandler(action as MediaSessionAction, handler)
       } catch {
-        // Nicht jede Plattform kennt jede Aktion.
+        // Nicht jede Plattform kennt jede Aktion — togglemicrophone etwa
+        // gibt es nur in Chrome.
       }
     }
 
     return () => {
       for (const [action] of handlers) {
         try {
-          navigator.mediaSession.setActionHandler(action, null)
+          session.setActionHandler(action as MediaSessionAction, null)
         } catch {
           /* siehe oben */
         }
       }
     }
-  }, [muted, onMutedChange])
+  }, [onTalkingChange, talking])
 
   useEffect(() => {
     return () => {
