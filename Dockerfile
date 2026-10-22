@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------- Abhängigkeiten
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 # ------------------------------------------------------------------------ Build
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -23,13 +23,13 @@ ENV VITE_TURN_URLS=$VITE_TURN_URLS \
 RUN npm run build
 
 # ----------------------------------------------------------- Produktionspaket
-FROM node:22-alpine AS prod-deps
+FROM node:24-alpine AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # ----------------------------------------------------------------- Laufzeitbild
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8080 \
